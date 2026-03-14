@@ -171,7 +171,7 @@ func (s *Server) handleWebDAVDownload(c *gin.Context) {
 		// Build the remote URL in the format the downloader expects
 		url := req.Remote + ":" + filePath
 
-		job, err := s.jobQueue.AddJob(url, "")
+		job, err := s.jobQueue.AddJob(url, "", false)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, Response{
 				Code:    500,
