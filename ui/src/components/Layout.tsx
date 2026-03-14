@@ -12,7 +12,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex w-full h-screen max-w-4xl bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white transition-colors">
+    <div className="flex w-full h-screen md:max-w-4xl bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white transition-colors">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div

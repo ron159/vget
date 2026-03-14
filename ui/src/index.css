@@ -47,24 +47,16 @@ html.dark body {
 }
 
 html,
-body,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
 #root {
   height: 100%;
   width: 100%;
-
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
-/* Ensure content fills on mobile */
-@media (max-width: 767px) {
-  #root {
-    align-items: stretch;
-  }
-
-  #root > div {
-    max-width: 100% !important;
-    width: 100%;
-  }
-}
