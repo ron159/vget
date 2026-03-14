@@ -7,6 +7,7 @@ import { postBulkDownload } from "../utils/apis";
 export function BulkDownloadPage() {
   const { t, isConnected, showToast, refresh } = useApp();
   const [urlText, setUrlText] = useState("");
+  const [transcribe, setLocalTranscribe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +87,7 @@ export function BulkDownloadPage() {
     setSubmitting(true);
 
     try {
-      const res = await postBulkDownload(urls);
+      const res = await postBulkDownload(urls, transcribe);
       if (res.code === 200) {
         const { queued, failed } = res.data;
         setUrlText("");
@@ -182,6 +183,23 @@ export function BulkDownloadPage() {
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           {t.bulk_invalid_hint}
         </p>
+      </div>
+
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          id="bulk-transcribe-toggle"
+          checked={transcribe}
+          onChange={(e) => setLocalTranscribe(e.target.checked)}
+          disabled={!isConnected || submitting}
+          className="rounded border-zinc-300 dark:border-zinc-700 text-blue-500 focus:ring-blue-500 bg-white dark:bg-zinc-900"
+        />
+        <label
+          htmlFor="bulk-transcribe-toggle"
+          className="text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer select-none"
+        >
+          Transcribe Voice to Text (AI)
+        </label>
       </div>
 
       {/* Actions */}

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WebdavRouteImport } from './routes/webdav'
+import { Route as TranscribeRouteImport } from './routes/transcribe'
 import { Route as TorrentRouteImport } from './routes/torrent'
 import { Route as TokenRouteImport } from './routes/token'
 import { Route as PodcastRouteImport } from './routes/podcast'
@@ -23,6 +24,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const WebdavRoute = WebdavRouteImport.update({
   id: '/webdav',
   path: '/webdav',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TranscribeRoute = TranscribeRouteImport.update({
+  id: '/transcribe',
+  path: '/transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TorrentRoute = TorrentRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/podcast': typeof PodcastRoute
   '/token': typeof TokenRoute
   '/torrent': typeof TorrentRoute
+  '/transcribe': typeof TranscribeRoute
   '/webdav': typeof WebdavRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/podcast': typeof PodcastRoute
   '/token': typeof TokenRoute
   '/torrent': typeof TorrentRoute
+  '/transcribe': typeof TranscribeRoute
   '/webdav': typeof WebdavRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/podcast': typeof PodcastRoute
   '/token': typeof TokenRoute
   '/torrent': typeof TorrentRoute
+  '/transcribe': typeof TranscribeRoute
   '/webdav': typeof WebdavRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/podcast'
     | '/token'
     | '/torrent'
+    | '/transcribe'
     | '/webdav'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/podcast'
     | '/token'
     | '/torrent'
+    | '/transcribe'
     | '/webdav'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/podcast'
     | '/token'
     | '/torrent'
+    | '/transcribe'
     | '/webdav'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   PodcastRoute: typeof PodcastRoute
   TokenRoute: typeof TokenRoute
   TorrentRoute: typeof TorrentRoute
+  TranscribeRoute: typeof TranscribeRoute
   WebdavRoute: typeof WebdavRoute
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/webdav'
       fullPath: '/webdav'
       preLoaderRoute: typeof WebdavRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transcribe': {
+      id: '/transcribe'
+      path: '/transcribe'
+      fullPath: '/transcribe'
+      preLoaderRoute: typeof TranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/torrent': {
@@ -245,6 +265,7 @@ const rootRouteChildren: RootRouteChildren = {
   PodcastRoute: PodcastRoute,
   TokenRoute: TokenRoute,
   TorrentRoute: TorrentRoute,
+  TranscribeRoute: TranscribeRoute,
   WebdavRoute: WebdavRoute,
 }
 export const routeTree = rootRouteImport

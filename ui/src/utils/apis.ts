@@ -16,6 +16,7 @@ export interface Job {
   total: number;
   filename?: string;
   error?: string;
+  transcribe?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -49,6 +50,7 @@ export interface ConfigData {
   torrent_enabled?: boolean;
   bilibili_cookie?: string;
   telegram_tdata_path?: string;
+  transcribe?: boolean;
 }
 
 export interface TorrentConfig {
@@ -144,12 +146,24 @@ export async function setConfigValue(
 
 export async function postDownload(
   url: string,
-  filename?: string
+  filename?: string,
+  transcribe?: boolean
 ): Promise<ApiResponse<{ id: string; status: string }>> {
   const res = await fetch("/api/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, filename }),
+    body: JSON.stringify({ url, filename, transcribe }),
+  });
+  return res.json();
+}
+
+export async function postTranscribe(
+  filePath: string
+): Promise<ApiResponse<{ id: string; status: string }>> {
+  const res = await fetch("/api/transcribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_path: filePath }),
   });
   return res.json();
 }
@@ -168,12 +182,13 @@ export interface BulkDownloadResult {
 }
 
 export async function postBulkDownload(
-  urls: string[]
+  urls: string[],
+  transcribe?: boolean
 ): Promise<ApiResponse<BulkDownloadResult>> {
   const res = await fetch("/api/bulk-download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ urls }),
+    body: JSON.stringify({ urls, transcribe }),
   });
   return res.json();
 }

@@ -13,6 +13,7 @@ import {
   FaKey,
   FaXmark,
   FaClockRotateLeft,
+  FaMicrophone,
 } from "react-icons/fa6";
 import { useApp } from "../context/AppContext";
 
@@ -63,6 +64,12 @@ export function Sidebar({ lang, onClose }: SidebarProps) {
       to: "/podcast",
       icon: <FaPodcast />,
       label: t.podcast,
+      show: true,
+    },
+    {
+      to: "/transcribe",
+      icon: <FaMicrophone />,
+      label: "Voice Transcription",
       show: true,
     },
     {

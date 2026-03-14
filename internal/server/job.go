@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/guiyumin/vget/internal/core/extractor"
+	"github.com/guiyumin/vget/internal/core/transcriber"
 )
 
 // JobStatus represents the current state of a download job
@@ -33,6 +34,7 @@ type Job struct {
 	Downloaded int64     `json:"downloaded"` // bytes downloaded
 	Total      int64     `json:"total"`      // total bytes (-1 if unknown)
 	Error      string    `json:"error,omitempty"`
+	Transcribe bool      `json:"transcribe,omitempty"` // whether to transcribe post-download
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 
@@ -133,6 +135,19 @@ func (jq *JobQueue) processJob(job *Job) {
 		}
 		jq.recordJobToHistory(job.ID)
 		return
+	}
+
+	// Begin Whisper Transcription hook if requested
+	if job.Transcribe {
+		jq.updateJobStatus(job.ID, JobStatusDownloading, 99, "transcribing audio...")
+		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
+		jq.mu.RLock()
+		actualFilename := job.Filename
+		jq.mu.RUnlock()
+		
+		if actualFilename != "" {
+			_ = transcriber.TranscribeAudio(job.ctx, actualFilename)
+		}
 	}
 
 	jq.updateJobStatus(job.ID, JobStatusCompleted, 100, "")
@@ -245,7 +260,7 @@ func (jq *JobQueue) AddFailedJob(rawURL, errorMsg string) *Job {
 }
 
 // AddJob creates and queues a new download job
-func (jq *JobQueue) AddJob(rawURL, filename string) (*Job, error) {
+func (jq *JobQueue) AddJob(rawURL, filename string, transcribe bool) (*Job, error) {
 	// Normalize URL: add https:// if missing
 	url, err := extractor.NormalizeURL(rawURL)
 	if err != nil {
@@ -263,9 +278,10 @@ func (jq *JobQueue) AddJob(rawURL, filename string) (*Job, error) {
 		ID:        id,
 		URL:       url,
 		Filename:  filename,
-		Status:    JobStatusQueued,
-		Progress:  0,
-		CreatedAt: time.Now(),
+		Status:     JobStatusQueued,
+		Progress:   0,
+		Transcribe: transcribe,
+		CreatedAt:  time.Now(),
 		UpdatedAt: time.Now(),
 		ctx:       ctx,
 		cancel:    cancel,

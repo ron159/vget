@@ -19,6 +19,7 @@ import (
 	"github.com/guiyumin/vget/internal/core/extractor"
 	"github.com/guiyumin/vget/internal/core/i18n"
 	"github.com/guiyumin/vget/internal/core/tracker"
+	"github.com/guiyumin/vget/internal/core/transcriber"
 	"github.com/guiyumin/vget/internal/core/version"
 	"github.com/guiyumin/vget/internal/core/webdav"
 	"github.com/guiyumin/vget/internal/torrent"
@@ -36,11 +37,13 @@ type DownloadRequest struct {
 	URL        string `json:"url" binding:"required"`
 	Filename   string `json:"filename,omitempty"`
 	ReturnFile bool   `json:"return_file,omitempty"`
+	Transcribe bool   `json:"transcribe,omitempty"`
 }
 
 // BulkDownloadRequest is the request body for POST /bulk-download
 type BulkDownloadRequest struct {
-	URLs []string `json:"urls" binding:"required"`
+	URLs       []string `json:"urls" binding:"required"`
+	Transcribe bool     `json:"transcribe,omitempty"`
 }
 
 // Server is the HTTP server for vget
@@ -126,6 +129,7 @@ func (s *Server) Start() error {
 	api.GET("/download", s.handleFileDownload) // Download local file by path
 	api.POST("/download", s.handleDownload)
 	api.POST("/bulk-download", s.handleBulkDownload)
+	api.POST("/transcribe", s.handleTranscribe)
 	api.GET("/status/:id", s.handleStatus)
 	api.GET("/jobs", s.handleGetJobs)
 	api.DELETE("/jobs", s.handleClearJobs)
@@ -326,7 +330,7 @@ func (s *Server) handleDownload(c *gin.Context) {
 	}
 
 	// Otherwise, queue the download
-	job, err := s.jobQueue.AddJob(req.URL, req.Filename)
+	job, err := s.jobQueue.AddJob(req.URL, req.Filename, req.Transcribe)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			Code:    500,
@@ -377,7 +381,7 @@ func (s *Server) handleBulkDownload(c *gin.Context) {
 			continue
 		}
 
-		job, err := s.jobQueue.AddJob(url, "")
+		job, err := s.jobQueue.AddJob(url, "", req.Transcribe)
 		if err != nil {
 			// Create a failed job so it shows in the UI
 			failedJob := s.jobQueue.AddFailedJob(url, err.Error())
@@ -430,8 +434,117 @@ func (s *Server) handleStatus(c *gin.Context) {
 			"progress": job.Progress,
 			"filename": job.Filename,
 			"error":    job.Error,
+			"transcribe": job.Transcribe,
 		},
 		Message: string(job.Status),
+	})
+}
+
+// TranscribeRequest is the request body for POST /transcribe
+type TranscribeRequest struct {
+	FilePath string `json:"file_path" binding:"required"`
+}
+
+func (s *Server) handleTranscribe(c *gin.Context) {
+	var req TranscribeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid request body: file_path is required",
+		})
+		return
+	}
+
+	// Security: ensure the file is within the output directory
+	absPath, err := filepath.Abs(req.FilePath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid path",
+		})
+		return
+	}
+
+	absOutputDir, _ := filepath.Abs(s.outputDir)
+	if !strings.HasPrefix(absPath, absOutputDir) {
+		c.JSON(http.StatusForbidden, Response{
+			Code:    403,
+			Data:    nil,
+			Message: "access denied: file outside output directory",
+		})
+		return
+	}
+
+	// Check file exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, Response{
+			Code:    404,
+			Data:    nil,
+			Message: "file not found",
+		})
+		return
+	}
+	
+	// Fast file extension validation before starting task
+	ext := strings.ToLower(filepath.Ext(absPath))
+	if !(ext == ".mp3" || ext == ".m4a" || ext == ".wav" || ext == ".mp4" || ext == ".mkv" || ext == ".webm" || ext == ".ts") {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "unsupported file format for transcription",
+		})
+		return
+	}
+
+	// We'll run the transcription in a background Job to track progress (since it uses CPU heavily)
+	jobId, err := generateJobID()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: "failed to generate job id",
+		})
+		return
+	}
+	
+	ctx, cancel := context.WithCancel(context.Background())
+	
+	job := &Job{
+		ID:        jobId,
+		URL:       "local://" + filepath.Base(absPath),
+		Filename:  absPath,
+		Status:    JobStatusDownloading, // Using Downloading state to signify running task
+		Progress:  99,
+		Transcribe: true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+	
+	s.jobQueue.mu.Lock()
+	s.jobQueue.jobs[jobId] = job
+	s.jobQueue.mu.Unlock()
+	
+	go func(j *Job, p string) {
+		err := transcriber.TranscribeAudio(j.ctx, p)
+		if err != nil {
+			s.jobQueue.updateJobStatus(j.ID, JobStatusFailed, 0, err.Error())
+		} else {
+			s.jobQueue.updateJobStatus(j.ID, JobStatusCompleted, 100, "")
+		}
+		s.jobQueue.recordJobToHistory(j.ID)
+	}(job, absPath)
+
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"id":     job.ID,
+			"status": job.Status,
+		},
+		Message: "transcription started",
 	})
 }
 

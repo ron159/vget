@@ -18,6 +18,7 @@ export function DownloadPage() {
   } = useApp();
 
   const [url, setUrl] = useState("");
+  const [transcribe, setLocalTranscribe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingDir, setEditingDir] = useState(false);
   const [newOutputDir, setNewOutputDir] = useState("");
@@ -28,7 +29,7 @@ export function DownloadPage() {
 
     setSubmitting(true);
     try {
-      const success = await submitDownload(url.trim());
+      const success = await submitDownload(url.trim(), transcribe);
       if (success) {
         setUrl("");
       }
@@ -109,6 +110,23 @@ export function DownloadPage() {
             {t.edit}
           </button>
         )}
+      </div>
+
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          id="transcribe-toggle"
+          checked={transcribe}
+          onChange={(e) => setLocalTranscribe(e.target.checked)}
+          disabled={!isConnected || submitting}
+          className="rounded border-zinc-300 dark:border-zinc-700 text-blue-500 focus:ring-blue-500 bg-white dark:bg-zinc-900"
+        />
+        <label
+          htmlFor="transcribe-toggle"
+          className="text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer select-none"
+        >
+          Transcribe Voice to Text (AI)
+        </label>
       </div>
 
       <form className="flex flex-col sm:flex-row gap-3" onSubmit={handleSubmit}>

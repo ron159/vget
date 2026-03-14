@@ -55,9 +55,9 @@ interface AppContextType {
   webdavServers: Record<string, WebDAVServer>;
   kuaidi100Key: string;
   kuaidi100Customer: string;
-  configExists: boolean;
   torrentEnabled: boolean;
   telegramTdataPath: string;
+  transcribe: boolean;
 
   // Translations
   t: UITranslations;
@@ -69,7 +69,7 @@ interface AppContextType {
 
   // Actions
   refresh: () => Promise<void>;
-  submitDownload: (url: string) => Promise<boolean>;
+  submitDownload: (url: string, transcribe: boolean) => Promise<boolean>;
   cancelDownload: (id: string) => Promise<void>;
   removeJob: (id: string) => Promise<void>;
   removeAllJobs: () => Promise<void>;
@@ -100,7 +100,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [serverT, setServerT] = useState<ServerTranslations>(
     defaultServerTranslations
   );
-  const [configExists, setConfigExists] = useState(true);
   const [configLang, setConfigLang] = useState("");
   const [configFormat, setConfigFormat] = useState("");
   const [configQuality, setConfigQuality] = useState("");
@@ -114,6 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [kuaidi100Customer, setKuaidi100Customer] = useState("");
   const [torrentEnabled, setTorrentEnabled] = useState(false);
   const [telegramTdataPath, setTelegramTdataPath] = useState("");
+  const [transcribe, setTranscribe] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -162,12 +162,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setKuaidi100Customer(kuaidi100Cfg?.customer || "");
         setTorrentEnabled(configRes.data.torrent_enabled || false);
         setTelegramTdataPath(configRes.data.telegram_tdata_path || "");
+        setTranscribe(configRes.data.transcribe === true);
       }
       if (i18nRes.code === 200) {
         // Merge with defaults to ensure new keys are available
         setT({ ...defaultTranslations, ...i18nRes.data.ui });
         setServerT({ ...defaultServerTranslations, ...i18nRes.data.server });
-        setConfigExists(i18nRes.data.config_exists);
       }
     } catch {
       setHealth(null);
@@ -183,8 +183,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const submitDownload = useCallback(
-    async (url: string) => {
-      const res = await postDownload(url.trim());
+    async (url: string, transcribe: boolean) => {
+      const res = await postDownload(url.trim(), undefined, transcribe);
       if (res.code === 200) {
         refresh();
         return true;
@@ -296,9 +296,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         webdavServers,
         kuaidi100Key,
         kuaidi100Customer,
-        configExists,
         torrentEnabled,
         telegramTdataPath,
+        transcribe,
         t,
         serverT,
         darkMode,
