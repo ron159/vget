@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/guiyumin/vget/internal/core/config"
 	"github.com/guiyumin/vget/internal/core/extractor"
 	"github.com/guiyumin/vget/internal/core/transcriber"
 )
