@@ -200,8 +200,12 @@ ui:
   history_empty: "No download history"
   history_empty_hint: "Completed downloads will appear here"
   history_clear_all: "Clear All History"
-  history_stats: "Statistics"
   history_total_downloaded: "Total Downloaded"
+  # Transcribe
+  voice_transcription: "Voice Transcription"
+  transcribe_to_text: "Transcribe Voice to Text (AI)"
+  transcribe_format: "Transcription Format"
+  transcribing: "transcribing audio (this may take a while)..."
 
 # Server messages
 server:

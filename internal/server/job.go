@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -146,10 +147,19 @@ func (jq *JobQueue) processJob(job *Job) {
 		jq.mu.RLock()
 		actualFilename := job.Filename
 		jq.mu.RUnlock()
-		
 		if actualFilename != "" {
 			cfg := config.LoadOrDefault()
-			_ = transcriber.TranscribeAudio(job.ctx, actualFilename, cfg.TranscribeFormat)
+			fullPath := actualFilename
+			if !filepath.IsAbs(actualFilename) {
+				fullPath = filepath.Join(cfg.OutputDir, actualFilename)
+			}
+			err := transcriber.TranscribeAudio(job.ctx, fullPath, cfg.TranscribeFormat)
+			if err != nil {
+				log.Printf("Transcription failed for job %s: %v", job.ID, err)
+				jq.updateJobStatus(job.ID, JobStatusFailed, 100, fmt.Sprintf("Download completed, but transcription failed: %v", err))
+				jq.recordJobToHistory(job.ID)
+				return
+			}
 		}
 	}
 

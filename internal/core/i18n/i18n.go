@@ -232,6 +232,10 @@ type UITranslations struct {
 	HistoryClearAll      string `yaml:"history_clear_all" json:"history_clear_all"`
 	HistoryStats         string `yaml:"history_stats" json:"history_stats"`
 	HistoryTotalDownloaded string `yaml:"history_total_downloaded" json:"history_total_downloaded"`
+	// Transcribe
+	VoiceTranscription   string `yaml:"voice_transcription" json:"voice_transcription"`
+	TranscribeToText     string `yaml:"transcribe_to_text" json:"transcribe_to_text"`
+	TranscribeFormat     string `yaml:"transcribe_format" json:"transcribe_format"`
 }
 
 // ServerTranslations holds translations for server messages

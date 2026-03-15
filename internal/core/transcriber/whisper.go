@@ -16,8 +16,8 @@ func TranscribeAudio(ctx context.Context, filePath string, format string) error 
 	// Check if whisper is installed
 	_, err := exec.LookPath("whisper")
 	if err != nil {
-		log.Printf("Whisper CLI not found, skipping transcription for %s", filePath)
-		return nil // Not an error if whisper isn't installed
+		log.Printf("Whisper CLI not found, failing transcription for %s", filePath)
+		return fmt.Errorf("whisper CLI not found in PATH")
 	}
 
 	// Only process audio and video files
