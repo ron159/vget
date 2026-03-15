@@ -5,7 +5,7 @@ import { FaMicrophone, FaFileAudio } from "react-icons/fa6";
 import { postTranscribe } from "../utils/apis";
 
 export function TranscribePage() {
-  const { isConnected, showToast } = useApp();
+  const { isConnected, showToast, t } = useApp();
   const [filePath, setFilePath] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,13 +17,13 @@ export function TranscribePage() {
     try {
       const res = await postTranscribe(filePath.trim());
       if (res.code === 200) {
-        showToast("success", "Transcription task started processing.");
+        showToast("success", t.transcribe_task_started || "Transcription task started processing.");
         setFilePath("");
       } else {
-        showToast("error", res.message || "Failed to start transcription.");
+        showToast("error", res.message || t.transcribe_task_failed || "Failed to start transcription.");
       }
     } catch {
-      showToast("error", "Network error or server unavailable.");
+      showToast("error", t.transcribe_network_err || "Network error or server unavailable.");
     } finally {
       setSubmitting(false);
     }
@@ -40,7 +40,7 @@ export function TranscribePage() {
             {useApp().t.voice_transcription || "Voice Transcription"}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Convert existing downloaded audio/video files to text using AI.
+            {t.transcribe_desc || "Convert existing downloaded audio/video files to text using AI."}
           </p>
         </div>
       </div>
@@ -50,7 +50,7 @@ export function TranscribePage() {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
               <FaFileAudio className="text-zinc-400" />
-              File Path
+              {t.transcribe_file_path || "File Path"}
             </label>
             <input
               type="text"
@@ -67,8 +67,7 @@ export function TranscribePage() {
               disabled={!isConnected || submitting}
             />
             <p className="text-xs text-zinc-500 dark:text-zinc-500">
-              Provide the absolute path to the local media file within the vget output directory.
-              Supported formats: .mp3, .m4a, .wav, .mp4, .mkv, .webm, .ts
+              {t.transcribe_file_path_hint || "Provide the absolute path to the local media file within the vget output directory. Supported formats: .mp3, .m4a, .wav, .mp4, .mkv, .webm, .ts"}
             </p>
           </div>
 
@@ -82,19 +81,19 @@ export function TranscribePage() {
             )}
             disabled={!isConnected || !filePath.trim() || submitting}
           >
-            {submitting ? "Starting Task..." : "Start Transcription"}
+            {submitting ? (t.transcribe_starting || "Starting Task...") : (t.transcribe_start || "Start Transcription")}
           </button>
         </form>
       </div>
       
       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700/50">
-        <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">How it works</h3>
+        <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">{t.transcribe_how_it_works || "How it works"}</h3>
         <ul className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 list-disc pl-4">
-          <li>The transcription uses the configured OpenAI Whisper model (default: small).</li>
-          <li>It runs locally on CPU and does not send your data to external APIs.</li>
-          <li>Once started, a background job will be created that you can track in the Downloads/Jobs view.</li>
-          <li>The output transcript will be saved as an `.srt` payload next to the original file.</li>
-          <li>Expect longer processing times for large files or when running on lower-end hardware.</li>
+          <li>{t.transcribe_how_1 || "The transcription uses the configured OpenAI Whisper model (default: small)."}</li>
+          <li>{t.transcribe_how_2 || "It runs locally on CPU and does not send your data to external APIs."}</li>
+          <li>{t.transcribe_how_3 || "Once started, a background job will be created that you can track in the Downloads/Jobs view."}</li>
+          <li>{t.transcribe_how_4 || "The output transcript will be saved as an `.srt` payload next to the original file."}</li>
+          <li>{t.transcribe_how_5 || "Expect longer processing times for large files or when running on lower-end hardware."}</li>
         </ul>
       </div>
     </div>

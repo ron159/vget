@@ -236,6 +236,20 @@ type UITranslations struct {
 	VoiceTranscription   string `yaml:"voice_transcription" json:"voice_transcription"`
 	TranscribeToText     string `yaml:"transcribe_to_text" json:"transcribe_to_text"`
 	TranscribeFormat     string `yaml:"transcribe_format" json:"transcribe_format"`
+	TranscribeDesc        string `yaml:"transcribe_desc" json:"transcribe_desc"`
+	TranscribeFilePath    string `yaml:"transcribe_file_path" json:"transcribe_file_path"`
+	TranscribeFilePathHint string `yaml:"transcribe_file_path_hint" json:"transcribe_file_path_hint"`
+	TranscribeStarting    string `yaml:"transcribe_starting" json:"transcribe_starting"`
+	TranscribeStart       string `yaml:"transcribe_start" json:"transcribe_start"`
+	TranscribeHowItWorks  string `yaml:"transcribe_how_it_works" json:"transcribe_how_it_works"`
+	TranscribeHow1        string `yaml:"transcribe_how_1" json:"transcribe_how_1"`
+	TranscribeHow2        string `yaml:"transcribe_how_2" json:"transcribe_how_2"`
+	TranscribeHow3        string `yaml:"transcribe_how_3" json:"transcribe_how_3"`
+	TranscribeHow4        string `yaml:"transcribe_how_4" json:"transcribe_how_4"`
+	TranscribeHow5        string `yaml:"transcribe_how_5" json:"transcribe_how_5"`
+	TranscribeTaskStarted string `yaml:"transcribe_task_started" json:"transcribe_task_started"`
+	TranscribeTaskFailed  string `yaml:"transcribe_task_failed" json:"transcribe_task_failed"`
+	TranscribeNetworkErr  string `yaml:"transcribe_network_err" json:"transcribe_network_err"`
 }
 
 // ServerTranslations holds translations for server messages

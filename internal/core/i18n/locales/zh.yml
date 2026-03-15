@@ -206,6 +206,20 @@ ui:
   transcribe_to_text: "下载后开启语音转文字 (AI)"
   transcribe_format: "转录格式"
   transcribing: "正在转录音频 (这可能需要一些时间)..."
+  transcribe_desc: "使用 AI 将已下载的音频/视频文件转换为文本。"
+  transcribe_file_path: "文件路径"
+  transcribe_file_path_hint: "请提供 vget 输出目录下的本地媒体文件的绝对路径。支持格式：.mp3, .m4a, .wav, .mp4, .mkv, .webm, .ts"
+  transcribe_starting: "正在启动任务..."
+  transcribe_start: "开始转录"
+  transcribe_how_it_works: "如何运作"
+  transcribe_how_1: "我们将使用配置的 OpenAI Whisper 模型进行转录 (默认: small)。"
+  transcribe_how_2: "它在本地使用 CPU 运行，不会将您的数据发送到外部 API。"
+  transcribe_how_3: "启动后，将创建一个后台任务，您可以在 下载/任务 历史视图中跟踪它。"
+  transcribe_how_4: "输出的字幕文件将保存在原文件旁。"
+  transcribe_how_5: "对于较大的文件或在低配硬件上运行时，请耐心等待更长的处理时间。"
+  transcribe_task_started: "转录任务已开始处理。"
+  transcribe_task_failed: "启动转录任务失败。"
+  transcribe_network_err: "网络错误或服务器无法连接。"
 
 # 服务器消息
 server:

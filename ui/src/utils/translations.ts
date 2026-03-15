@@ -104,6 +104,20 @@ export interface UITranslations {
   voice_transcription: string;
   transcribe_to_text: string;
   transcribe_format: string;
+  transcribe_desc: string;
+  transcribe_file_path: string;
+  transcribe_file_path_hint: string;
+  transcribe_starting: string;
+  transcribe_start: string;
+  transcribe_how_it_works: string;
+  transcribe_how_1: string;
+  transcribe_how_2: string;
+  transcribe_how_3: string;
+  transcribe_how_4: string;
+  transcribe_how_5: string;
+  transcribe_task_started: string;
+  transcribe_task_failed: string;
+  transcribe_network_err: string;
 }
 
 export interface ServerTranslations {
@@ -217,6 +231,20 @@ export const defaultTranslations: UITranslations = {
   voice_transcription: "Voice Transcription",
   transcribe_to_text: "Transcribe Voice to Text (AI)",
   transcribe_format: "Transcription Format",
+  transcribe_desc: "Convert existing downloaded audio/video files to text using AI.",
+  transcribe_file_path: "File Path",
+  transcribe_file_path_hint: "Provide the absolute path to the local media file within the vget output directory. Supported formats: .mp3, .m4a, .wav, .mp4, .mkv, .webm, .ts",
+  transcribe_starting: "Starting Task...",
+  transcribe_start: "Start Transcription",
+  transcribe_how_it_works: "How it works",
+  transcribe_how_1: "The transcription uses the configured OpenAI Whisper model (default: small).",
+  transcribe_how_2: "It runs locally on CPU and does not send your data to external APIs.",
+  transcribe_how_3: "Once started, a background job will be created that you can track in the Downloads/Jobs view.",
+  transcribe_how_4: "The output transcript will be saved as an `.srt` payload next to the original file.",
+  transcribe_how_5: "Expect longer processing times for large files or when running on lower-end hardware.",
+  transcribe_task_started: "Transcription task started processing.",
+  transcribe_task_failed: "Failed to start transcription.",
+  transcribe_network_err: "Network error or server unavailable.",
 };
 
 export const defaultServerTranslations: ServerTranslations = {

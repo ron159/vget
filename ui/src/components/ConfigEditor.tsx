@@ -111,7 +111,7 @@ export function ConfigEditor({
     initialTelegramTdataPath || ""
   );
   const [pendingTranscribeFormat, setPendingTranscribeFormat] = useState(
-    initialTranscribeFormat || "md"
+    initialTranscribeFormat || "txt"
   );
 
   // WebDAV add form
@@ -152,7 +152,7 @@ export function ConfigEditor({
     setPendingKuaidi100Key(initialKuaidi100Key || "");
     setPendingKuaidi100Customer(initialKuaidi100Customer || "");
     setPendingTelegramTdataPath(initialTelegramTdataPath || "");
-    setPendingTranscribeFormat(initialTranscribeFormat || "md");
+    setPendingTranscribeFormat(initialTranscribeFormat || "txt");
     // Reset WebDAV form
     setNewWebDAVName("");
     setNewWebDAVUrl("");
@@ -235,7 +235,7 @@ export function ConfigEditor({
         <ConfigRow
           label={t.transcribe_format}
           value={pendingTranscribeFormat}
-          options={["md", "txt", "srt"]}
+          options={["txt", "vtt", "srt"]}
           disabled={!isConnected || savingConfig}
           onChange={setPendingTranscribeFormat}
         />

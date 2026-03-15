@@ -391,7 +391,7 @@ func LoadOrDefault() *Config {
 		cfg.Quality = defaults.Quality
 	}
 	if cfg.TranscribeFormat == "" {
-		cfg.TranscribeFormat = "md"
+		cfg.TranscribeFormat = "txt"
 	}
 
 	return cfg

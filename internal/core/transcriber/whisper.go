@@ -1,6 +1,7 @@
 package transcriber
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -40,12 +41,13 @@ func TranscribeAudio(ctx context.Context, filePath string, format string) error 
 		"--output_format", format,
 	)
 
-	// Capture output for debugging (optional)
+	// Capture output for debugging
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("whisper transcription failed for %s: %w", filePath, err)
+		return fmt.Errorf("whisper transcription failed for %s: %s (error: %w)", filePath, stderr.String(), err)
 	}
 
 	log.Printf("Whisper transcription completed for: %s", filePath)
