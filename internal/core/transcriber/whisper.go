@@ -14,11 +14,11 @@ import (
 // TranscribeAudio calls the whisper CLI tool to transcribe the given file.
 // It uses the 'small' model to balance accuracy and CPU performance on lower-end devices.
 func TranscribeAudio(ctx context.Context, filePath string, format string) error {
-	// Check if whisper is installed
-	_, err := exec.LookPath("whisper")
+	// Check if whisper-ctranslate2 is installed
+	_, err := exec.LookPath("whisper-ctranslate2")
 	if err != nil {
-		log.Printf("Whisper CLI not found, failing transcription for %s", filePath)
-		return fmt.Errorf("whisper CLI not found in PATH")
+		log.Printf("Faster Whisper CLI not found, failing transcription for %s", filePath)
+		return fmt.Errorf("whisper-ctranslate2 CLI not found in PATH")
 	}
 
 	// Only process audio and video files
@@ -29,14 +29,15 @@ func TranscribeAudio(ctx context.Context, filePath string, format string) error 
 
 	outputDir := filepath.Dir(filePath)
 	
-	log.Printf("Starting Whisper transcription for: %s", filePath)
+	log.Printf("Starting Faster Whisper (ctranslate2) transcription for: %s", filePath)
 	
-	// Create transcription command using the large-v3 model on CPU.
-	// You can change output_format to srt, vtt, txt, etc.
-	cmd := exec.CommandContext(ctx, "whisper",
+	// Create transcription command using the small model on CPU with int8 quantization.
+	// whisper-ctranslate2 is a drop-in replacement CLI for openai-whisper.
+	cmd := exec.CommandContext(ctx, "whisper-ctranslate2",
 		filePath,
 		"--model", "small", // Small model balances speed and accuracy for N100/N300 CPUs
 		"--device", "cpu",     // Docker runs on CPU by default
+		"--compute_type", "int8", // Use int8 quantization to cut memory usage in half
 		"--output_dir", outputDir,
 		"--output_format", format,
 	)
@@ -47,9 +48,9 @@ func TranscribeAudio(ctx context.Context, filePath string, format string) error 
 	cmd.Stdout = os.Stdout
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("whisper transcription failed for %s: %s (error: %w)", filePath, stderr.String(), err)
+		return fmt.Errorf("faster-whisper transcription failed for %s: %s (error: %w)", filePath, stderr.String(), err)
 	}
 
-	log.Printf("Whisper transcription completed for: %s", filePath)
+	log.Printf("Faster Whisper transcription completed for: %s", filePath)
 	return nil
 }
