@@ -62,7 +62,7 @@ type Config struct {
 	// Twitter/X configuration
 	Twitter TwitterConfig `yaml:"twitter,omitempty"`
 
-	// Whisper transcription format (e.g. "md", "txt", "srt")
+	// Whisper transcription format (e.g. "txt", "srt", "vtt")
 	TranscribeFormat string `yaml:"transcribe_format,omitempty"`
 
 	// Server configuration for `vget serve`
@@ -390,7 +390,7 @@ func LoadOrDefault() *Config {
 	if cfg.Quality == "" {
 		cfg.Quality = defaults.Quality
 	}
-	if cfg.TranscribeFormat == "" {
+	if cfg.TranscribeFormat == "" || cfg.TranscribeFormat == "md" {
 		cfg.TranscribeFormat = "txt"
 	}
 
