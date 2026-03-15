@@ -69,7 +69,7 @@ export function Sidebar({ lang, onClose }: SidebarProps) {
     {
       to: "/transcribe",
       icon: <FaMicrophone />,
-      label: "Voice Transcription",
+      label: t.voice_transcription || "Voice Transcription",
       show: true,
     },
     {

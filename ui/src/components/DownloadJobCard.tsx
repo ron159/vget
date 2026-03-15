@@ -17,7 +17,7 @@ export function DownloadJobCard({
   onClear,
   t,
 }: DownloadJobCardProps) {
-  const canCancel = job.status === "queued" || job.status === "downloading";
+  const canCancel = job.status === "queued" || job.status === "downloading" || job.status === "transcribing";
   const canClear =
     job.status === "completed" ||
     job.status === "failed" ||
@@ -65,6 +65,7 @@ export function DownloadJobCard({
   const statusText: Record<JobStatus, string> = {
     queued: t.queued,
     downloading: t.downloading,
+    transcribing: t.transcribing || "transcribing...",
     completed: t.completed,
     failed: t.failed,
     cancelled: t.cancelled,
@@ -74,6 +75,8 @@ export function DownloadJobCard({
     queued: "bg-zinc-300 dark:bg-zinc-700 text-zinc-500",
     downloading:
       "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400",
+    transcribing:
+      "bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400",
     completed:
       "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-500",
     failed: "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-500",
@@ -142,6 +145,14 @@ export function DownloadJobCard({
               {prettyBytes(speed, { bits: false }) + "/s"}
             </span>
           </div>
+        </div>
+      )}
+      {job.status === "transcribing" && (
+        <div className="flex flex-col gap-2 mt-3">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            {t.transcribing || "transcribing audio (this may take a while)..."}
+          </span>
         </div>
       )}
       {job.status === "failed" && job.error && (

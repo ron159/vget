@@ -19,9 +19,10 @@ type JobStatus string
 const (
 	JobStatusQueued      JobStatus = "queued"
 	JobStatusDownloading JobStatus = "downloading"
-	JobStatusCompleted   JobStatus = "completed"
-	JobStatusFailed      JobStatus = "failed"
-	JobStatusCancelled   JobStatus = "cancelled"
+	JobStatusCompleted    JobStatus = "completed"
+	JobStatusFailed       JobStatus = "failed"
+	JobStatusCancelled    JobStatus = "cancelled"
+	JobStatusTranscribing JobStatus = "transcribing"
 )
 
 // Job represents a download job
@@ -139,14 +140,15 @@ func (jq *JobQueue) processJob(job *Job) {
 
 	// Begin Whisper Transcription hook if requested
 	if job.Transcribe {
-		jq.updateJobStatus(job.ID, JobStatusDownloading, 99, "transcribing audio...")
+		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, "")
 		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
 		jq.mu.RLock()
 		actualFilename := job.Filename
 		jq.mu.RUnlock()
 		
 		if actualFilename != "" {
-			_ = transcriber.TranscribeAudio(job.ctx, actualFilename)
+			cfg := config.LoadOrDefault()
+			_ = transcriber.TranscribeAudio(job.ctx, actualFilename, cfg.TranscribeFormat)
 		}
 	}
 

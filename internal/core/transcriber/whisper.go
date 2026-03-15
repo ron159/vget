@@ -11,8 +11,8 @@ import (
 )
 
 // TranscribeAudio calls the whisper CLI tool to transcribe the given file.
-// It uses the best available model (large-v3) if possible, but defaults to what's available or set.
-func TranscribeAudio(ctx context.Context, filePath string) error {
+// It uses the 'small' model to balance accuracy and CPU performance on lower-end devices.
+func TranscribeAudio(ctx context.Context, filePath string, format string) error {
 	// Check if whisper is installed
 	_, err := exec.LookPath("whisper")
 	if err != nil {
@@ -34,10 +34,10 @@ func TranscribeAudio(ctx context.Context, filePath string) error {
 	// You can change output_format to srt, vtt, txt, etc.
 	cmd := exec.CommandContext(ctx, "whisper",
 		filePath,
-		"--model", "large-v3", // User requested the best model
+		"--model", "small", // Small model balances speed and accuracy for N100/N300 CPUs
 		"--device", "cpu",     // Docker runs on CPU by default
 		"--output_dir", outputDir,
-		"--output_format", "srt",
+		"--output_format", format,
 	)
 
 	// Capture output for debugging (optional)

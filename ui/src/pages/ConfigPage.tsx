@@ -16,6 +16,7 @@ export function ConfigPage() {
     kuaidi100Customer,
     telegramTdataPath,
     webdavServers,
+    transcribeFormat,
     saveConfig,
     addWebDAV,
     deleteWebDAV,
@@ -38,6 +39,7 @@ export function ConfigPage() {
         initialKuaidi100Key={kuaidi100Key}
         initialKuaidi100Customer={kuaidi100Customer}
         initialTelegramTdataPath={telegramTdataPath}
+        initialTranscribeFormat={transcribeFormat}
         serverPort={serverPort}
         webdavServers={webdavServers}
         onSave={handleSaveConfig}

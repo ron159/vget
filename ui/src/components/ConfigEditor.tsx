@@ -26,6 +26,7 @@ interface UITranslations {
   username: string;
   password: string;
   no_webdav_servers: string;
+  transcribe_format: string;
 }
 
 interface ConfigEditorProps {
@@ -40,6 +41,7 @@ interface ConfigEditorProps {
   initialKuaidi100Key: string;
   initialKuaidi100Customer: string;
   initialTelegramTdataPath: string;
+  initialTranscribeFormat: string;
   serverPort: number;
   webdavServers: Record<string, WebDAVServer>;
   // Callbacks
@@ -64,6 +66,7 @@ export interface ConfigValues {
   kuaidi100Key: string;
   kuaidi100Customer: string;
   telegramTdataPath: string;
+  transcribeFormat: string;
 }
 
 export function ConfigEditor({
@@ -77,6 +80,7 @@ export function ConfigEditor({
   initialKuaidi100Key,
   initialKuaidi100Customer,
   initialTelegramTdataPath,
+  initialTranscribeFormat,
   serverPort,
   webdavServers,
   onSave,
@@ -106,6 +110,9 @@ export function ConfigEditor({
   const [pendingTelegramTdataPath, setPendingTelegramTdataPath] = useState(
     initialTelegramTdataPath || ""
   );
+  const [pendingTranscribeFormat, setPendingTranscribeFormat] = useState(
+    initialTranscribeFormat || "md"
+  );
 
   // WebDAV add form
   const [newWebDAVName, setNewWebDAVName] = useState("");
@@ -127,6 +134,7 @@ export function ConfigEditor({
         kuaidi100Key: pendingKuaidi100Key,
         kuaidi100Customer: pendingKuaidi100Customer,
         telegramTdataPath: pendingTelegramTdataPath,
+        transcribeFormat: pendingTranscribeFormat,
       });
     } finally {
       setSavingConfig(false);
@@ -144,6 +152,7 @@ export function ConfigEditor({
     setPendingKuaidi100Key(initialKuaidi100Key || "");
     setPendingKuaidi100Customer(initialKuaidi100Customer || "");
     setPendingTelegramTdataPath(initialTelegramTdataPath || "");
+    setPendingTranscribeFormat(initialTranscribeFormat || "md");
     // Reset WebDAV form
     setNewWebDAVName("");
     setNewWebDAVUrl("");
@@ -222,6 +231,13 @@ export function ConfigEditor({
           options={["best", "1080p", "720p", "480p"]}
           disabled={!isConnected || savingConfig}
           onChange={setPendingQuality}
+        />
+        <ConfigRow
+          label={t.transcribe_format}
+          value={pendingTranscribeFormat}
+          options={["md", "txt", "srt"]}
+          disabled={!isConnected || savingConfig}
+          onChange={setPendingTranscribeFormat}
         />
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
           <span className="sm:min-w-25 text-sm text-zinc-700 dark:text-zinc-200">

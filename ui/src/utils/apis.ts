@@ -3,6 +3,7 @@ import type { UITranslations, ServerTranslations } from "./translations";
 export type JobStatus =
   | "queued"
   | "downloading"
+  | "transcribing"
   | "completed"
   | "failed"
   | "cancelled";
@@ -51,6 +52,7 @@ export interface ConfigData {
   bilibili_cookie?: string;
   telegram_tdata_path?: string;
   transcribe?: boolean;
+  transcribe_format?: string;
 }
 
 export interface TorrentConfig {

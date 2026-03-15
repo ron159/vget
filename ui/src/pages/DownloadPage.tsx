@@ -125,7 +125,7 @@ export function DownloadPage() {
           htmlFor="transcribe-toggle"
           className="text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer select-none"
         >
-          Transcribe Voice to Text (AI)
+          {t.transcribe_to_text || "Transcribe Voice to Text (AI)"}
         </label>
       </div>
 

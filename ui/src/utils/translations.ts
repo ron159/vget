@@ -22,6 +22,7 @@ export interface UITranslations {
   paste_hint: string;
   queued: string;
   downloading: string;
+  transcribing: string;
   completed: string;
   failed: string;
   cancelled: string;
@@ -99,6 +100,10 @@ export interface UITranslations {
   history_clear_all: string;
   history_stats: string;
   history_total_downloaded: string;
+  // Transcribe
+  voice_transcription: string;
+  transcribe_to_text: string;
+  transcribe_format: string;
 }
 
 export interface ServerTranslations {
@@ -130,6 +135,7 @@ export const defaultTranslations: UITranslations = {
   paste_hint: "Paste a URL above to get started",
   queued: "queued",
   downloading: "downloading",
+  transcribing: "transcribing...",
   completed: "completed",
   failed: "failed",
   cancelled: "cancelled",
@@ -207,6 +213,10 @@ export const defaultTranslations: UITranslations = {
   history_clear_all: "Clear All History",
   history_stats: "Statistics",
   history_total_downloaded: "Total Downloaded",
+  // Transcribe
+  voice_transcription: "Voice Transcription",
+  transcribe_to_text: "Transcribe Voice to Text (AI)",
+  transcribe_format: "Transcription Format",
 };
 
 export const defaultServerTranslations: ServerTranslations = {

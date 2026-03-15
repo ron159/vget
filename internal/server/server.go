@@ -515,8 +515,8 @@ func (s *Server) handleTranscribe(c *gin.Context) {
 		ID:        jobId,
 		URL:       "local://" + filepath.Base(absPath),
 		Filename:  absPath,
-		Status:    JobStatusDownloading, // Using Downloading state to signify running task
-		Progress:  99,
+		Status:    JobStatusTranscribing, // Changed to distinct state
+		Progress:  0,
 		Transcribe: true,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -529,7 +529,8 @@ func (s *Server) handleTranscribe(c *gin.Context) {
 	s.jobQueue.mu.Unlock()
 	
 	go func(j *Job, p string) {
-		err := transcriber.TranscribeAudio(j.ctx, p)
+		cfg := config.LoadOrDefault()
+		err := transcriber.TranscribeAudio(j.ctx, p, cfg.TranscribeFormat)
 		if err != nil {
 			s.jobQueue.updateJobStatus(j.ID, JobStatusFailed, 0, err.Error())
 		} else {
@@ -656,6 +657,7 @@ func (s *Server) handleGetConfig(c *gin.Context) {
 			"torrent_enabled":       cfg.Torrent.Enabled,
 			"bilibili_cookie":       cfg.Bilibili.Cookie,
 			"telegram_tdata_path":   cfg.Telegram.TDataPath,
+			"transcribe_format":     cfg.TranscribeFormat,
 			},
 		Message: "config retrieved",
 	})
@@ -1272,6 +1274,8 @@ func (s *Server) setConfigValue(cfg *config.Config, key, value string) error {
 		cfg.Format = value
 	case "quality":
 		cfg.Quality = value
+	case "transcribe_format":
+		cfg.TranscribeFormat = value
 	case "twitter_auth_token", "twitter.auth_token":
 		cfg.Twitter.AuthToken = value
 	case "server.max_concurrent", "server_max_concurrent":

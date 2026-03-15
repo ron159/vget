@@ -37,7 +37,7 @@ export function TranscribePage() {
         </div>
         <div>
           <h1 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-            Voice Transcription
+            {useApp().t.voice_transcription || "Voice Transcription"}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
             Convert existing downloaded audio/video files to text using AI.
@@ -90,7 +90,7 @@ export function TranscribePage() {
       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700/50">
         <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">How it works</h3>
         <ul className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 list-disc pl-4">
-          <li>The transcription uses the configured OpenAI Whisper model (e.g., large-v3).</li>
+          <li>The transcription uses the configured OpenAI Whisper model (default: small).</li>
           <li>It runs locally on CPU and does not send your data to external APIs.</li>
           <li>Once started, a background job will be created that you can track in the Downloads/Jobs view.</li>
           <li>The output transcript will be saved as an `.srt` payload next to the original file.</li>

@@ -58,6 +58,7 @@ interface AppContextType {
   torrentEnabled: boolean;
   telegramTdataPath: string;
   transcribe: boolean;
+  transcribeFormat: string;
 
   // Translations
   t: UITranslations;
@@ -114,6 +115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [torrentEnabled, setTorrentEnabled] = useState(false);
   const [telegramTdataPath, setTelegramTdataPath] = useState("");
   const [transcribe, setTranscribe] = useState(false);
+  const [transcribeFormat, setTranscribeFormat] = useState("md");
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -163,6 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTorrentEnabled(configRes.data.torrent_enabled || false);
         setTelegramTdataPath(configRes.data.telegram_tdata_path || "");
         setTranscribe(configRes.data.transcribe === true);
+        setTranscribeFormat(configRes.data.transcribe_format || "md");
       }
       if (i18nRes.code === 200) {
         // Merge with defaults to ensure new keys are available
@@ -252,6 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (values.telegramTdataPath) {
         await setConfigValue("telegram.tdata_path", values.telegramTdataPath);
       }
+      await setConfigValue("transcribe_format", values.transcribeFormat || "md");
       refresh();
     },
     [refresh]
@@ -299,6 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         torrentEnabled,
         telegramTdataPath,
         transcribe,
+        transcribeFormat,
         t,
         serverT,
         darkMode,
