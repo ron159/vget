@@ -3,8 +3,28 @@ import sys
 import argparse
 import time
 import subprocess
+import inspect
+import re
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
+
+
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F300-\U0001F5FF"
+    "\U0001F600-\U0001F64F"
+    "\U0001F680-\U0001F6FF"
+    "\U0001F700-\U0001F77F"
+    "\U0001F780-\U0001F7FF"
+    "\U0001F800-\U0001F8FF"
+    "\U0001F900-\U0001F9FF"
+    "\U0001FA00-\U0001FAFF"
+    "\U00002700-\U000027BF"
+    "\U00002600-\U000026FF"
+    "\uFE0F"
+    "]+",
+    flags=re.UNICODE,
+)
 
 def srt_timestamp(seconds: float) -> str:
     """Convert float seconds to SRT timestamp format (HH:MM:SS,mmm)."""
@@ -27,6 +47,26 @@ def normalize_output_format(output_format: str) -> str:
     if output_format in {"txt", "srt", "vtt"}:
         return output_format
     return "txt"
+
+
+def strip_emojis(text: str) -> str:
+    return EMOJI_PATTERN.sub("", text or "")
+
+
+def clean_transcription_text(raw_text: str) -> str:
+    if not raw_text:
+        return ""
+
+    try:
+        parameters = inspect.signature(rich_transcription_postprocess).parameters
+        if "clean_emojis" in parameters:
+            text = rich_transcription_postprocess(raw_text, clean_emojis=True)
+        else:
+            text = rich_transcription_postprocess(raw_text)
+    except (TypeError, ValueError):
+        text = rich_transcription_postprocess(raw_text)
+
+    return strip_emojis(text).strip()
 
 def prepare_runtime_dirs() -> None:
     xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
@@ -99,7 +139,7 @@ def build_subtitle_entries(clean_text: str, data: dict, audio_file: str):
     entries = []
     for sentence in data.get("sentence_info") or []:
         raw_sentence = sentence.get("text", "")
-        sentence_text = rich_transcription_postprocess(raw_sentence, clean_emojis=True).strip()
+        sentence_text = clean_transcription_text(raw_sentence)
         if not sentence_text:
             continue
 
@@ -210,7 +250,7 @@ def main():
     raw_text = data.get("text", "")
     
     # Clean up the emojis and tags
-    clean_text = rich_transcription_postprocess(raw_text, clean_emojis=True)
+    clean_text = clean_transcription_text(raw_text)
     
     if output_format == "txt":
         with open(out_path, "w", encoding="utf-8") as f:

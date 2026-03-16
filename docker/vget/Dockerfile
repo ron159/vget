@@ -1,5 +1,7 @@
 # vget Docker Image
 
+ARG BASE_IMAGE=model-base
+
 # Build stage for UI
 FROM node:22-slim AS ui-builder
 WORKDIR /app/ui
@@ -78,8 +80,6 @@ VOLUME ["/home/vget/downloads", "/home/vget/.config/vget"]
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD []
-
-ARG BASE_IMAGE=model-base
 
 # Runtime stage
 FROM ${BASE_IMAGE}
