@@ -212,7 +212,7 @@ ui:
   transcribe_starting: "正在启动任务..."
   transcribe_start: "开始转录"
   transcribe_how_it_works: "如何运作"
-  transcribe_how_1: "我们将使用配置的 OpenAI Whisper 模型进行转录 (默认: small)。"
+  transcribe_how_1: "我们将使用阿里脱敏的 FunASR 体系进行转录 (默认: SenseVoiceSmall)。"
   transcribe_how_2: "它在本地使用 CPU 运行，不会将您的数据发送到外部 API。"
   transcribe_how_3: "启动后，将创建一个后台任务，您可以在 下载/任务 历史视图中跟踪它。"
   transcribe_how_4: "输出的字幕文件将保存在原文件旁。"

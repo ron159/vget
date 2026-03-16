@@ -236,6 +236,7 @@ type UITranslations struct {
 	VoiceTranscription   string `yaml:"voice_transcription" json:"voice_transcription"`
 	TranscribeToText     string `yaml:"transcribe_to_text" json:"transcribe_to_text"`
 	TranscribeFormat     string `yaml:"transcribe_format" json:"transcribe_format"`
+	Transcribing         string `yaml:"transcribing" json:"transcribing"`
 	TranscribeDesc        string `yaml:"transcribe_desc" json:"transcribe_desc"`
 	TranscribeFilePath    string `yaml:"transcribe_file_path" json:"transcribe_file_path"`
 	TranscribeFilePathHint string `yaml:"transcribe_file_path_hint" json:"transcribe_file_path_hint"`

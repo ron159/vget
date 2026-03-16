@@ -42,7 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip3 install --no-cache-dir --break-system-packages \
     yt-dlp \
     youtube-dl \
-    whisper-ctranslate2
+    funasr \
+    modelscope \
+    torchaudio
 
 RUN (getent group 1000 >/dev/null || groupadd -g 1000 vget) && \
     (id -u 1000 >/dev/null 2>&1 || useradd -u 1000 -g 1000 -m -d /home/vget vget) && \
@@ -54,6 +56,7 @@ COPY --from=go-builder /vget-server /usr/local/bin/vget-server
 ENV ROD_BROWSER=/usr/bin/chromium
 
 COPY docker/vget/entrypoint.sh /usr/local/bin/
+COPY docker/vget/funasr_transcriber.py /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /home/vget

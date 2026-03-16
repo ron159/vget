@@ -89,7 +89,7 @@ export function TranscribePage() {
       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700/50">
         <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">{t.transcribe_how_it_works || "How it works"}</h3>
         <ul className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 list-disc pl-4">
-          <li>{t.transcribe_how_1 || "The transcription uses the configured OpenAI Whisper model (default: small)."}</li>
+          <li>{t.transcribe_how_1 || "The transcription uses the configured Alibaba FunASR model (default: SenseVoiceSmall)."}</li>
           <li>{t.transcribe_how_2 || "It runs locally on CPU and does not send your data to external APIs."}</li>
           <li>{t.transcribe_how_3 || "Once started, a background job will be created that you can track in the Downloads/Jobs view."}</li>
           <li>{t.transcribe_how_4 || "The output transcript will be saved as an `.srt` payload next to the original file."}</li>

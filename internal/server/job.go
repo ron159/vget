@@ -142,7 +142,11 @@ func (jq *JobQueue) processJob(job *Job) {
 
 	// Begin Whisper Transcription hook if requested
 	if job.Transcribe {
-		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, "")
+		transcribingMsg := "transcribing audio (this may take a while)..."
+		if jq.server != nil && jq.server.i18n != nil && jq.server.i18n.Translations.Transcribing != "" {
+			transcribingMsg = jq.server.i18n.Translations.Transcribing
+		}
+		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, transcribingMsg)
 		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
 		jq.mu.RLock()
 		actualFilename := job.Filename

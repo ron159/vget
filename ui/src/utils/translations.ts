@@ -237,7 +237,7 @@ export const defaultTranslations: UITranslations = {
   transcribe_starting: "Starting Task...",
   transcribe_start: "Start Transcription",
   transcribe_how_it_works: "How it works",
-  transcribe_how_1: "The transcription uses the configured OpenAI Whisper model (default: small).",
+  transcribe_how_1: "The transcription uses the configured FunASR model (default: SenseVoiceSmall).",
   transcribe_how_2: "It runs locally on CPU and does not send your data to external APIs.",
   transcribe_how_3: "Once started, a background job will be created that you can track in the Downloads/Jobs view.",
   transcribe_how_4: "The output transcript will be saved as an `.srt` payload next to the original file.",
