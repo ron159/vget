@@ -12,6 +12,7 @@ import (
 
 	"github.com/guiyumin/vget/internal/core/config"
 	"github.com/guiyumin/vget/internal/core/extractor"
+	"github.com/guiyumin/vget/internal/core/i18n"
 	"github.com/guiyumin/vget/internal/core/transcriber"
 )
 
@@ -143,8 +144,10 @@ func (jq *JobQueue) processJob(job *Job) {
 	// Begin Whisper Transcription hook if requested
 	if job.Transcribe {
 		transcribingMsg := "transcribing audio (this may take a while)..."
-		if jq.server != nil && jq.server.i18n != nil && jq.server.i18n.Translations.Transcribing != "" {
-			transcribingMsg = jq.server.i18n.Translations.Transcribing
+		cfg := config.LoadOrDefault()
+		t := i18n.GetTranslations(cfg.Language)
+		if t != nil && t.VoiceTranscription != "" && t.Transcribing != "" {
+			transcribingMsg = t.Transcribing
 		}
 		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, transcribingMsg)
 		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
