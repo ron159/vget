@@ -146,8 +146,8 @@ func (jq *JobQueue) processJob(job *Job) {
 		transcribingMsg := "transcribing audio (this may take a while)..."
 		cfg := config.LoadOrDefault()
 		t := i18n.GetTranslations(cfg.Language)
-		if t != nil && t.VoiceTranscription != "" && t.Transcribing != "" {
-			transcribingMsg = t.Transcribing
+		if t != nil && t.UI.VoiceTranscription != "" && t.UI.Transcribing != "" {
+			transcribingMsg = t.UI.Transcribing
 		}
 		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, transcribingMsg)
 		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
