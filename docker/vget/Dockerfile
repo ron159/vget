@@ -59,6 +59,9 @@ COPY docker/vget/entrypoint.sh /usr/local/bin/
 COPY docker/vget/funasr_transcriber.py /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Pre-download FunASR SenseVoiceSmall and VAD models so they are baked into the image
+RUN python3 -c "from funasr import AutoModel; AutoModel(model='iic/SenseVoiceSmall', vad_model='fsmn-vad', vad_kwargs={'max_single_segment_time': 30000}, disable_update=True)"
+
 WORKDIR /home/vget
 EXPOSE 8080
 VOLUME ["/home/vget/downloads", "/home/vget/.config/vget"]
