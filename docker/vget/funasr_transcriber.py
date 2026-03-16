@@ -56,7 +56,8 @@ def main():
         cache={}, 
         language="auto",  
         use_itn=True, 
-        batch_size_s=60
+        batch_size_s=60,
+        sentence_timestamp=True
     )
 
     if not res or not len(res):
@@ -64,38 +65,52 @@ def main():
         sys.exit(1)
 
     # Note: SenseVoice returns text with emotions and lang tags. We use postprocess to clean it up.
-    # format is typically: [{'key': 'filename', 'text': '<|zh|><|NEUTRAL|><|Speech|><|wo|>xxx', 'timestamp': [...]}]
+    # format is typically: [{'key': 'filename', 'text': '<|zh|><|NEUTRAL|><|Speech|><|wo|>xxx', 'timestamp': [[start, end], [start, end]]}]
     data = res[0]
     raw_text = data.get("text", "")
-    timestamps = data.get("timestamp", [])
     
-    clean_text = rich_transcription_postprocess(raw_text)
-
-    # In SenseVoice, the text is often concatenated with out natural spacing if timestamps are not perfectly aligned, 
-    # but the rich_transcription_postprocess handles the main token stripping.
+    # Clean up the emojis and tags
+    clean_text = rich_transcription_postprocess(raw_text, clean_emojis=True)
     
     if output_format == "txt":
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(clean_text)
             
     elif output_format == "srt":
-        # SenseVoiceSmall timestamps are character-level out of the box in `res[0]['timestamp']`. 
-        # For a full sentence VAD structure, we have to group them or use Paraformer, 
-        # but SenseVoice chunks by default if fsmn-vad is active. 
-        # To avoid complex alignment code, if VAD is triggered, FunASR returns chunks in a list.
-        # But `generate()` returns a single 'text' per API call.
-        # To get proper sentences, wait for FunASR's official SRT exporter or we block chunk it:
+        sentences = data.get("sentence_info", [])
         
-        # Fallback: Just write the whole text block as one subtitle if it's short, 
-        # or we simulate VAD chunks (for SenseVoice, we might just output txt-like content inside the SRT 
-        # without precise sub-second timings if it wasn't returned in a segmented format)
-        
-        # To guarantee safety since SenseVoice returns token-level stamps, 
-        # we will output a basic block. For exact SRT alignment, Paraformer is better.
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write("1\n")
-            f.write("00:00:00,000 --> 00:59:59,999\n")
-            f.write(clean_text + "\n")
+            if not sentences:
+                # Fallback if no detailed timestamps are generated
+                f.write("1\n")
+                f.write("00:00:00,000 --> 00:59:59,999\n")
+                f.write(clean_text + "\n")
+            else:
+                srt_index = 1
+                for sentence in sentences:
+                    # Clean the individual sentence text from emojis and tags
+                    raw_sent = sentence.get("text", "")
+                    sent_text = rich_transcription_postprocess(raw_sent, clean_emojis=True).strip()
+                    
+                    if not sent_text:
+                        continue
+                        
+                    start_ms = sentence.get("start", 0)
+                    end_ms = sentence.get("end", 0)
+                    
+                    # Fallback to token array if 'start' and 'end' keys aren't readily available
+                    if start_ms == 0 and end_ms == 0 and "timestamp" in sentence and len(sentence["timestamp"]) > 0:
+                        start_ms = sentence["timestamp"][0][0]
+                        end_ms = sentence["timestamp"][-1][1]
+                    
+                    start_sec = start_ms / 1000.0
+                    end_sec = end_ms / 1000.0
+                    
+                    f.write(f"{srt_index}\n")
+                    f.write(f"{srt_timestamp(start_sec)} --> {srt_timestamp(end_sec)}\n")
+                    f.write(sent_text + "\n\n")
+                    
+                    srt_index += 1
 
     elapsed = time.time() - start_time
     print(f"Transcription finished in {elapsed:.2f} seconds. Output saved to {out_path}")
