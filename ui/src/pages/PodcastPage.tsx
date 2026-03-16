@@ -23,6 +23,10 @@ export function PodcastPage() {
   const [loading, setLoading] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({ type: "search" });
 
+  const showRequestError = (message: string | undefined, fallback: string) => {
+    showToast("error", message || fallback);
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || searching) return;
@@ -32,7 +36,11 @@ export function PodcastPage() {
       const res = await searchPodcasts(query.trim(), configLang);
       if (res.code === 200) {
         setViewState({ type: "results", results: res.data.results });
+        return;
       }
+      showRequestError(res.message, "Failed to search podcasts");
+    } catch {
+      showRequestError(undefined, "Failed to search podcasts");
     } finally {
       setSearching(false);
     }
@@ -48,7 +56,11 @@ export function PodcastPage() {
           channel,
           episodes: res.data.episodes,
         });
+        return;
       }
+      showRequestError(res.message, "Failed to load podcast episodes");
+    } catch {
+      showRequestError(undefined, "Failed to load podcast episodes");
     } finally {
       setLoading(false);
     }
@@ -56,13 +68,22 @@ export function PodcastPage() {
 
   const handleEpisodeClick = async (episode: PodcastEpisode) => {
     // Download the episode by submitting its URL
-    if (episode.download_url) {
+    if (!episode.download_url) {
+      showRequestError(undefined, "Episode download URL is unavailable");
+      return;
+    }
+
+    try {
       // Use podcast name + episode title as filename
       const filename = `${episode.podcast_name} - ${episode.title}`;
       const res = await postDownload(episode.download_url, filename);
       if (res.code === 200) {
         showToast("success", t.podcast_download_started);
+        return;
       }
+      showRequestError(res.message, "Failed to start podcast download");
+    } catch {
+      showRequestError(undefined, "Failed to start podcast download");
     }
   };
 
@@ -83,7 +104,11 @@ export function PodcastPage() {
       const res = await searchPodcasts(q, configLang);
       if (res.code === 200) {
         setViewState({ type: "results", results: res.data.results });
+        return;
       }
+      showRequestError(res.message, "Failed to search podcasts");
+    } catch {
+      showRequestError(undefined, "Failed to search podcasts");
     } finally {
       setSearching(false);
     }

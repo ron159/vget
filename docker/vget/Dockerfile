@@ -65,11 +65,9 @@ FROM runtime-base AS model-cache
 # Pre-download FunASR SenseVoiceSmall, VAD and Punc models into the runtime cache path.
 RUN gosu 1000:1000 python3 -c "from funasr import AutoModel; AutoModel(model='iic/SenseVoiceSmall', vad_model='fsmn-vad', vad_kwargs={'max_single_segment_time': 30000}, punc_model='ct-punc', disable_update=True)"
 
-# Runtime stage
-FROM runtime-base
-
+# Stable base image stage
+FROM runtime-base AS model-base
 COPY --from=model-cache --chown=1000:1000 /home/vget/.cache /home/vget/.cache
-COPY --from=go-builder /vget-server /usr/local/bin/vget-server
 COPY docker/vget/entrypoint.sh /usr/local/bin/
 COPY docker/vget/funasr_transcriber.py /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -80,3 +78,10 @@ VOLUME ["/home/vget/downloads", "/home/vget/.config/vget"]
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD []
+
+ARG BASE_IMAGE=model-base
+
+# Runtime stage
+FROM ${BASE_IMAGE}
+
+COPY --from=go-builder /vget-server /usr/local/bin/vget-server

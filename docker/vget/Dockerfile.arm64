@@ -21,8 +21,8 @@ COPY --from=ui-builder /app/ui/dist ./internal/server/dist
 
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /vget-server ./cmd/vget-server
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Runtime base stage
+FROM debian:bookworm-slim AS runtime-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -45,15 +45,16 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 
 RUN (getent group 1000 >/dev/null || groupadd -g 1000 vget) && \
     (id -u 1000 >/dev/null 2>&1 || useradd -u 1000 -g 1000 -m -d /home/vget vget) && \
-    mkdir -p /home/vget/downloads /home/vget/.config/vget && \
+    mkdir -p /home/vget/downloads /home/vget/.config/vget /home/vget/.cache && \
     chown -R 1000:1000 /home/vget
-
-COPY --from=go-builder /vget-server /usr/local/bin/vget-server
 
 ENV ROD_BROWSER=/usr/bin/chromium
 
 COPY docker/vget/entrypoint-arm64.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Stable base image stage
+FROM runtime-base AS model-base
 
 WORKDIR /home/vget
 EXPOSE 8080
@@ -61,3 +62,10 @@ VOLUME ["/home/vget/downloads", "/home/vget/.config/vget"]
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD []
+
+ARG BASE_IMAGE=model-base
+
+# Runtime stage
+FROM ${BASE_IMAGE}
+
+COPY --from=go-builder /vget-server /usr/local/bin/vget-server

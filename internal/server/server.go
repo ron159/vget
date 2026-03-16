@@ -48,14 +48,14 @@ type BulkDownloadRequest struct {
 
 // Server is the HTTP server for vget
 type Server struct {
-	port       int
-	outputDir  string
-	apiKey     string
+	port      int
+	outputDir string
+	apiKey    string
 	jobQueue  *JobQueue
 	historyDB *HistoryDB
-	cfg        *config.Config
-	server     *http.Server
-	engine     *gin.Engine
+	cfg       *config.Config
+	server    *http.Server
+	engine    *gin.Engine
 }
 
 // NewServer creates a new HTTP server
@@ -430,105 +430,213 @@ func (s *Server) handleStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, Response{
 		Code: 200,
 		Data: gin.H{
-			"id":       job.ID,
-			"status":   job.Status,
-			"progress": job.Progress,
-			"filename": job.Filename,
-			"error":    job.Error,
+			"id":         job.ID,
+			"status":     job.Status,
+			"progress":   job.Progress,
+			"filename":   job.Filename,
+			"error":      job.Error,
 			"transcribe": job.Transcribe,
 		},
 		Message: string(job.Status),
 	})
 }
 
-// TranscribeRequest is the request body for POST /transcribe
+// TranscribeRequest is the JSON request body for POST /transcribe.
+// The endpoint also accepts multipart/form-data with a "file" upload.
 type TranscribeRequest struct {
 	FilePath string `json:"file_path" binding:"required"`
 }
 
 func (s *Server) handleTranscribe(c *gin.Context) {
-	var req TranscribeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Code:    400,
-			Data:    nil,
-			Message: "invalid request body: file_path is required",
-		})
-		return
+	var absPath string
+
+	if c.ContentType() == "multipart/form-data" {
+		fileHeader, err := c.FormFile("file")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "invalid request body: file is required",
+			})
+			return
+		}
+
+		filename := filepath.Base(fileHeader.Filename)
+		if filename == "" || filename == "." {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "invalid uploaded filename",
+			})
+			return
+		}
+		if !isSupportedTranscribeFile(filename) {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "unsupported file format for transcription",
+			})
+			return
+		}
+
+		uploadDir := filepath.Join(s.outputDir, "transcribe_uploads")
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to prepare upload directory: %v", err),
+			})
+			return
+		}
+
+		absUploadDir, err := filepath.Abs(uploadDir)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: "failed to resolve upload directory",
+			})
+			return
+		}
+
+		absPath = filepath.Join(absUploadDir, fmt.Sprintf("%d_%s", time.Now().UnixNano(), filename))
+		if err := c.SaveUploadedFile(fileHeader, absPath); err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to save uploaded file: %v", err),
+			})
+			return
+		}
+	} else {
+		var req TranscribeRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "invalid request body: file_path is required",
+			})
+			return
+		}
+
+		resolvedPath, err := filepath.Abs(req.FilePath)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "invalid path",
+			})
+			return
+		}
+
+		absOutputDir, err := filepath.Abs(s.outputDir)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: "failed to resolve output directory",
+			})
+			return
+		}
+		if !isPathWithinDir(resolvedPath, absOutputDir) {
+			c.JSON(http.StatusForbidden, Response{
+				Code:    403,
+				Data:    nil,
+				Message: "access denied: file outside output directory",
+			})
+			return
+		}
+
+		if _, err := os.Stat(resolvedPath); os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, Response{
+				Code:    404,
+				Data:    nil,
+				Message: "file not found",
+			})
+			return
+		} else if err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to access file: %v", err),
+			})
+			return
+		}
+
+		if !isSupportedTranscribeFile(resolvedPath) {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: "unsupported file format for transcription",
+			})
+			return
+		}
+
+		absPath = resolvedPath
 	}
 
-	// Security: ensure the file is within the output directory
-	absPath, err := filepath.Abs(req.FilePath)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Code:    400,
-			Data:    nil,
-			Message: "invalid path",
-		})
-		return
-	}
-
-	absOutputDir, _ := filepath.Abs(s.outputDir)
-	if !strings.HasPrefix(absPath, absOutputDir) {
-		c.JSON(http.StatusForbidden, Response{
-			Code:    403,
-			Data:    nil,
-			Message: "access denied: file outside output directory",
-		})
-		return
-	}
-
-	// Check file exists
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, Response{
-			Code:    404,
-			Data:    nil,
-			Message: "file not found",
-		})
-		return
-	}
-	
-	// Fast file extension validation before starting task
-	ext := strings.ToLower(filepath.Ext(absPath))
-	if !(ext == ".mp3" || ext == ".m4a" || ext == ".wav" || ext == ".mp4" || ext == ".mkv" || ext == ".webm" || ext == ".ts") {
-		c.JSON(http.StatusBadRequest, Response{
-			Code:    400,
-			Data:    nil,
-			Message: "unsupported file format for transcription",
-		})
-		return
-	}
-
-	// We'll run the transcription in a background Job to track progress (since it uses CPU heavily)
-	jobId, err := generateJobID()
+	job, err := s.startTranscribeJob(absPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			Code:    500,
 			Data:    nil,
-			Message: "failed to generate job id",
+			Message: fmt.Sprintf("failed to start transcription: %v", err),
 		})
 		return
 	}
-	
-	ctx, cancel := context.WithCancel(context.Background())
-	
-	job := &Job{
-		ID:        jobId,
-		URL:       "local://" + filepath.Base(absPath),
-		Filename:  absPath,
-		Status:    JobStatusTranscribing, // Changed to distinct state
-		Progress:  0,
-		Transcribe: true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		ctx:       ctx,
-		cancel:    cancel,
+
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"id":     job.ID,
+			"status": job.Status,
+		},
+		Message: "transcription started",
+	})
+}
+
+func isSupportedTranscribeFile(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp3", ".m4a", ".wav", ".mp4", ".mkv", ".webm", ".ts":
+		return true
+	default:
+		return false
 	}
-	
+}
+
+func isPathWithinDir(path, dir string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+func (s *Server) startTranscribeJob(absPath string) (*Job, error) {
+	jobId, err := generateJobID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate job id: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	job := &Job{
+		ID:         jobId,
+		URL:        "local://" + filepath.Base(absPath),
+		Filename:   absPath,
+		Status:     JobStatusTranscribing,
+		Progress:   0,
+		Transcribe: true,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		ctx:        ctx,
+		cancel:     cancel,
+	}
+
 	s.jobQueue.mu.Lock()
 	s.jobQueue.jobs[jobId] = job
 	s.jobQueue.mu.Unlock()
-	
+
 	go func(j *Job, p string) {
 		cfg := config.LoadOrDefault()
 		err := transcriber.TranscribeAudio(j.ctx, p, cfg.TranscribeFormat)
@@ -540,14 +648,7 @@ func (s *Server) handleTranscribe(c *gin.Context) {
 		s.jobQueue.recordJobToHistory(j.ID)
 	}(job, absPath)
 
-	c.JSON(http.StatusOK, Response{
-		Code: 200,
-		Data: gin.H{
-			"id":     job.ID,
-			"status": job.Status,
-		},
-		Message: "transcription started",
-	})
+	return job, nil
 }
 
 func (s *Server) handleGetJobs(c *gin.Context) {
@@ -659,7 +760,7 @@ func (s *Server) handleGetConfig(c *gin.Context) {
 			"bilibili_cookie":       cfg.Bilibili.Cookie,
 			"telegram_tdata_path":   cfg.Telegram.TDataPath,
 			"transcribe_format":     cfg.TranscribeFormat,
-			},
+		},
 		Message: "config retrieved",
 	})
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,10 +9,15 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
 )
+
+var podcastHTTPClient = &http.Client{
+	Timeout: 15 * time.Second,
+}
 
 // Podcast search types
 
@@ -49,6 +55,20 @@ type PodcastEpisode struct {
 type PodcastEpisodesRequest struct {
 	PodcastID string `json:"podcast_id" binding:"required"`
 	Source    string `json:"source" binding:"required"` // "xiaoyuzhou" or "itunes"
+}
+
+func checkPodcastUpstreamStatus(resp *http.Response) error {
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return nil
+	}
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	msg := strings.TrimSpace(string(body))
+	if msg == "" {
+		return fmt.Errorf("upstream returned %s", resp.Status)
+	}
+
+	return fmt.Errorf("upstream returned %s: %s", resp.Status, msg)
 }
 
 // containsChinese checks if string contains Chinese characters
@@ -245,20 +265,30 @@ type xiaoyuzhouSearchResponse struct {
 
 func searchXiaoyuzhouAPI(query string) (*PodcastSearchResult, error) {
 	apiURL := "https://ask.xiaoyuzhoufm.com/api/keyword/search"
-	payload := fmt.Sprintf(`{"query": "%s"}`, query)
+	payload, err := json.Marshal(map[string]string{"query": query})
+	if err != nil {
+		return nil, err
+	}
 
-	req, err := http.NewRequest("POST", apiURL, strings.NewReader(payload))
+	req, err := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "https://www.xiaoyuzhoufm.com")
+	req.Header.Set("Referer", "https://www.xiaoyuzhoufm.com/")
+	req.Header.Set("User-Agent", "vget")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := podcastHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkPodcastUpstreamStatus(resp); err != nil {
+		return nil, err
+	}
 
 	var result xiaoyuzhouSearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -300,11 +330,21 @@ func searchXiaoyuzhouAPI(query string) (*PodcastSearchResult, error) {
 func fetchXiaoyuzhouEpisodesAPI(podcastID string) ([]PodcastEpisode, string, error) {
 	pageURL := fmt.Sprintf("https://www.xiaoyuzhoufm.com/podcast/%s", podcastID)
 
-	resp, err := http.Get(pageURL)
+	req, err := http.NewRequest(http.MethodGet, pageURL, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	req.Header.Set("User-Agent", "vget")
+
+	resp, err := podcastHTTPClient.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
+
+	if err := checkPodcastUpstreamStatus(resp); err != nil {
+		return nil, "", err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -405,12 +445,23 @@ func searchITunesAPI(query string) (*PodcastSearchResult, error) {
 		defer wg.Done()
 		podcastURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&media=podcast&entity=podcast&limit=50",
 			url.QueryEscape(query))
-		resp, err := http.Get(podcastURL)
+		req, err := http.NewRequest(http.MethodGet, podcastURL, nil)
+		if err != nil {
+			podcastErr = err
+			return
+		}
+		req.Header.Set("User-Agent", "vget")
+
+		resp, err := podcastHTTPClient.Do(req)
 		if err != nil {
 			podcastErr = err
 			return
 		}
 		defer resp.Body.Close()
+		if err := checkPodcastUpstreamStatus(resp); err != nil {
+			podcastErr = err
+			return
+		}
 		if err := json.NewDecoder(resp.Body).Decode(&podcastResult); err != nil {
 			podcastErr = err
 		}
@@ -421,12 +472,23 @@ func searchITunesAPI(query string) (*PodcastSearchResult, error) {
 		defer wg.Done()
 		episodeURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&media=podcast&entity=podcastEpisode&limit=200",
 			url.QueryEscape(query))
-		resp, err := http.Get(episodeURL)
+		req, err := http.NewRequest(http.MethodGet, episodeURL, nil)
+		if err != nil {
+			episodeErr = err
+			return
+		}
+		req.Header.Set("User-Agent", "vget")
+
+		resp, err := podcastHTTPClient.Do(req)
 		if err != nil {
 			episodeErr = err
 			return
 		}
 		defer resp.Body.Close()
+		if err := checkPodcastUpstreamStatus(resp); err != nil {
+			episodeErr = err
+			return
+		}
 		if err := json.NewDecoder(resp.Body).Decode(&episodeResult); err != nil {
 			episodeErr = err
 		}
@@ -474,11 +536,21 @@ func searchITunesAPI(query string) (*PodcastSearchResult, error) {
 func fetchITunesEpisodesAPI(podcastID string) ([]PodcastEpisode, string, error) {
 	lookupURL := fmt.Sprintf("https://itunes.apple.com/lookup?id=%s&entity=podcastEpisode&limit=50", podcastID)
 
-	resp, err := http.Get(lookupURL)
+	req, err := http.NewRequest(http.MethodGet, lookupURL, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	req.Header.Set("User-Agent", "vget")
+
+	resp, err := podcastHTTPClient.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
+
+	if err := checkPodcastUpstreamStatus(resp); err != nil {
+		return nil, "", err
+	}
 
 	var result struct {
 		ResultCount int `json:"resultCount"`

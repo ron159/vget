@@ -170,6 +170,19 @@ export async function postTranscribe(
   return res.json();
 }
 
+export async function postTranscribeUpload(
+  file: File
+): Promise<ApiResponse<{ id: string; status: string }>> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/transcribe", {
+    method: "POST",
+    body: formData,
+  });
+  return res.json();
+}
+
 export interface BulkDownloadJob {
   id: string;
   url: string;
