@@ -18,6 +18,7 @@ import (
 type Client struct {
 	client   *webdav.Client
 	baseURL  string
+	basePath string
 	username string
 	password string
 }
@@ -71,6 +72,7 @@ func NewClient(rawURL string) (*Client, error) {
 	return &Client{
 		client:   client,
 		baseURL:  baseURL,
+		basePath: normalizeBasePath(parsed.Path),
 		username: username,
 		password: password,
 	}, nil
@@ -87,7 +89,7 @@ func ParseURL(rawURL string) (string, error) {
 
 // Stat returns information about a file
 func (c *Client) Stat(ctx context.Context, filePath string) (*FileInfo, error) {
-	info, err := c.client.Stat(ctx, filePath)
+	info, err := c.client.Stat(ctx, c.resolveRequestPath(filePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat %s: %w", filePath, err)
 	}
@@ -102,15 +104,19 @@ func (c *Client) Stat(ctx context.Context, filePath string) (*FileInfo, error) {
 
 // List returns the contents of a directory
 func (c *Client) List(ctx context.Context, dirPath string) ([]FileInfo, error) {
-	infos, err := c.client.ReadDir(ctx, dirPath, false)
+	requestPath := c.resolveRequestPath(dirPath)
+	infos, err := c.client.ReadDir(ctx, requestPath, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list %s: %w", dirPath, err)
 	}
 
 	// Normalize dirPath for comparison
-	normalizedDir := strings.TrimSuffix(dirPath, "/")
+	normalizedDir := strings.TrimSuffix(requestPath, "/")
 	if normalizedDir == "" {
-		normalizedDir = "/"
+		normalizedDir = strings.TrimSuffix(c.basePath, "/")
+		if normalizedDir == "" {
+			normalizedDir = "/"
+		}
 	}
 
 	result := make([]FileInfo, 0, len(infos))
@@ -139,8 +145,10 @@ func (c *Client) List(ctx context.Context, dirPath string) ([]FileInfo, error) {
 
 // Open opens a file for reading and returns the reader and file size
 func (c *Client) Open(ctx context.Context, filePath string) (io.ReadCloser, int64, error) {
+	requestPath := c.resolveRequestPath(filePath)
+
 	// First get the file size
-	info, err := c.client.Stat(ctx, filePath)
+	info, err := c.client.Stat(ctx, requestPath)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to stat %s: %w", filePath, err)
 	}
@@ -149,7 +157,7 @@ func (c *Client) Open(ctx context.Context, filePath string) (io.ReadCloser, int6
 		return nil, 0, fmt.Errorf("%s is a directory", filePath)
 	}
 
-	reader, err := c.client.Open(ctx, filePath)
+	reader, err := c.client.Open(ctx, requestPath)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to open %s: %w", filePath, err)
 	}
@@ -219,6 +227,7 @@ func NewClientFromConfig(server *config.WebDAVServer) (*Client, error) {
 	return &Client{
 		client:   client,
 		baseURL:  server.URL,
+		basePath: normalizeBasePath(server.URL),
 		username: server.Username,
 		password: server.Password,
 	}, nil
@@ -231,11 +240,7 @@ func ExtractFilename(filePath string) string {
 
 // GetFileURL returns the full HTTP URL for a file path
 func (c *Client) GetFileURL(filePath string) string {
-	// Ensure path starts with /
-	if !strings.HasPrefix(filePath, "/") {
-		filePath = "/" + filePath
-	}
-	return c.baseURL + filePath
+	return joinURLPath(c.baseURL, c.resolveRequestPath(filePath))
 }
 
 // GetAuthHeader returns the Basic Auth header value if credentials are set
@@ -269,4 +274,75 @@ func (c *Client) SupportsRangeRequests(ctx context.Context, filePath string) (bo
 	resp.Body.Close()
 
 	return resp.Header.Get("Accept-Ranges") == "bytes", nil
+}
+
+func normalizeBasePath(raw string) string {
+	if raw == "" {
+		return "/"
+	}
+
+	if parsed, err := url.Parse(raw); err == nil && parsed.Scheme != "" {
+		raw = parsed.Path
+	}
+
+	if raw == "" {
+		return "/"
+	}
+
+	if !strings.HasPrefix(raw, "/") {
+		raw = "/" + raw
+	}
+
+	if raw != "/" {
+		raw = strings.TrimSuffix(raw, "/")
+	}
+
+	return raw
+}
+
+func (c *Client) resolveRequestPath(target string) string {
+	base := c.basePath
+	if base == "" {
+		base = "/"
+	}
+
+	target = strings.TrimSpace(target)
+	if target == "" || target == "/" {
+		if base == "/" {
+			return ""
+		}
+		return ""
+	}
+
+	if strings.HasPrefix(target, base+"/") {
+		target = strings.TrimPrefix(target, base)
+	}
+
+	if base == "/" {
+		if !strings.HasPrefix(target, "/") {
+			return "/" + target
+		}
+		return target
+	}
+
+	return strings.TrimPrefix(target, "/")
+}
+
+func joinURLPath(baseURL, requestPath string) string {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return baseURL + requestPath
+	}
+
+	if requestPath == "" {
+		return parsed.String()
+	}
+
+	if !strings.HasPrefix(requestPath, "/") {
+		parsed.Path = path.Join(parsed.Path, requestPath)
+	} else {
+		parsed.Path = requestPath
+	}
+
+	return parsed.String()
 }
