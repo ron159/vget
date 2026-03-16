@@ -209,6 +209,21 @@ export async function addWebDAVServer(
   return res.json();
 }
 
+export async function updateWebDAVServer(
+  oldName: string,
+  name: string,
+  url: string,
+  username: string,
+  password: string
+): Promise<ApiResponse<{ old_name: string; name: string }>> {
+  const res = await fetch(`/api/config/webdav/${encodeURIComponent(oldName)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, url, username, password }),
+  });
+  return res.json();
+}
+
 export async function deleteWebDAVServer(
   name: string
 ): Promise<ApiResponse<{ name: string }>> {

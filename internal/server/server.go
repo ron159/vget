@@ -145,6 +145,7 @@ func (s *Server) Start() error {
 	api.PUT("/config", s.handleUpdateConfig)
 	api.GET("/config/webdav", s.handleGetWebDAV)
 	api.POST("/config/webdav", s.handleAddWebDAV)
+	api.PUT("/config/webdav/:name", s.handleUpdateWebDAV)
 	api.DELETE("/config/webdav/:name", s.handleDeleteWebDAV)
 	api.GET("/i18n", s.handleI18n)
 	api.POST("/kuaidi100", s.handleKuaidi100)
@@ -845,6 +846,68 @@ func (s *Server) handleAddWebDAV(c *gin.Context) {
 	})
 }
 
+func (s *Server) handleUpdateWebDAV(c *gin.Context) {
+	oldName := c.Param("name")
+
+	var req WebDAVConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "name and url are required",
+		})
+		return
+	}
+
+	cfg := config.LoadOrDefault()
+	if cfg.GetWebDAVServer(oldName) == nil {
+		c.JSON(http.StatusNotFound, Response{
+			Code:    404,
+			Data:    nil,
+			Message: "webdav server not found",
+		})
+		return
+	}
+
+	if oldName != req.Name && cfg.GetWebDAVServer(req.Name) != nil {
+		c.JSON(http.StatusConflict, Response{
+			Code:    409,
+			Data:    nil,
+			Message: "webdav server name already exists",
+		})
+		return
+	}
+
+	if oldName != req.Name {
+		cfg.DeleteWebDAVServer(oldName)
+	}
+
+	cfg.SetWebDAVServer(req.Name, config.WebDAVServer{
+		URL:      req.URL,
+		Username: req.Username,
+		Password: req.Password,
+	})
+
+	if err := config.Save(cfg); err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: fmt.Sprintf("failed to save config: %v", err),
+		})
+		return
+	}
+
+	s.cfg = cfg
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"old_name": oldName,
+			"name":     req.Name,
+		},
+		Message: "webdav server updated",
+	})
+}
+
 func (s *Server) handleDeleteWebDAV(c *gin.Context) {
 	name := c.Param("name")
 
@@ -1267,6 +1330,9 @@ func (s *Server) setConfigValue(cfg *config.Config, key, value string) error {
 
 	switch key {
 	case "language":
+		if !i18n.IsSupportedLanguage(value) {
+			return fmt.Errorf("unsupported language: %s (supported: %s)", value, strings.Join(i18n.SupportedLanguageCodes(), ", "))
+		}
 		cfg.Language = value
 	case "output_dir":
 		cfg.OutputDir = value

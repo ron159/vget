@@ -5,11 +5,53 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var ansiEscapePattern = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+
+func normalizeTranscribeFormat(format string) string {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "srt", "vtt", "txt":
+		return strings.ToLower(strings.TrimSpace(format))
+	default:
+		return "txt"
+	}
+}
+
+func summarizeTranscriberOutput(stderr, stdout string) string {
+	output := strings.TrimSpace(stderr)
+	if output == "" {
+		output = strings.TrimSpace(stdout)
+	}
+	if output == "" {
+		return "transcriber exited without output"
+	}
+
+	output = strings.ReplaceAll(output, "\r", "\n")
+	output = ansiEscapePattern.ReplaceAllString(output, "")
+
+	lines := make([]string, 0, 8)
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		lines = append(lines, line)
+	}
+
+	if len(lines) == 0 {
+		return "transcriber exited without readable output"
+	}
+	if len(lines) > 8 {
+		lines = lines[len(lines)-8:]
+	}
+
+	return strings.Join(lines, " | ")
+}
 
 // TranscribeAudio calls the whisper CLI tool to transcribe the given file.
 // It uses the 'small' model to balance accuracy and CPU performance on lower-end devices.
@@ -36,19 +78,20 @@ func TranscribeAudio(ctx context.Context, filePath string, format string) error 
 		"/usr/local/bin/funasr_transcriber.py",
 		filePath,
 		"--output_dir", outputDir,
-		"--output_format", format,
+		"--output_format", normalizeTranscribeFormat(format),
 		"--device", "cpu", 
 	}
 
 	cmd := exec.CommandContext(ctx, pythonCmd, args...)
 
-	// Capture output for debugging
+	// Capture output so job errors remain concise.
+	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Stdout = os.Stdout
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("funasr transcription failed for %s: %s (error: %w)", filePath, stderr.String(), err)
+		return fmt.Errorf("funasr transcription failed for %s: %s (error: %w)", filePath, summarizeTranscriberOutput(stderr.String(), stdout.String()), err)
 	}
 
 	log.Printf("FunASR transcription completed for: %s", filePath)

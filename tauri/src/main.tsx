@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import './i18n';
-import { changeLanguage } from './i18n';
+import { changeLanguage, normalizeLanguage } from './i18n';
 
 // Theme management
 let currentTheme = "light";
@@ -35,7 +35,7 @@ mediaQuery.addEventListener("change", (e) => {
 invoke<{ theme: string; language: string }>("get_config")
   .then((config) => {
     applyTheme(config.theme || "light");
-    changeLanguage(config.language || "en");
+    changeLanguage(normalizeLanguage(config.language));
   })
   .catch(() => {
     // Config not available yet, defaults applied

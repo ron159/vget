@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import time
+import subprocess
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
@@ -13,23 +14,169 @@ def srt_timestamp(seconds: float) -> str:
     ms = int(round((seconds - int(seconds)) * 1000))
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
+def vtt_timestamp(seconds: float) -> str:
+    """Convert float seconds to WebVTT timestamp format (HH:MM:SS.mmm)."""
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int(round((seconds - int(seconds)) * 1000))
+    return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
+
+def normalize_output_format(output_format: str) -> str:
+    output_format = (output_format or "txt").lower().strip()
+    if output_format in {"txt", "srt", "vtt"}:
+        return output_format
+    return "txt"
+
+def prepare_runtime_dirs() -> None:
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
+    if not xdg_cache_home:
+        xdg_cache_home = os.path.join(os.path.expanduser("~"), ".cache")
+        os.environ["XDG_CACHE_HOME"] = xdg_cache_home
+
+    cache_dir = os.environ.get("VGET_CACHE_DIR") or os.path.join(xdg_cache_home, "vget")
+    modelscope_cache = os.environ.get("MODELSCOPE_CACHE") or os.path.join(xdg_cache_home, "modelscope")
+    huggingface_cache = os.environ.get("HF_HOME") or os.path.join(xdg_cache_home, "huggingface")
+    torch_cache = os.environ.get("TORCH_HOME") or os.path.join(xdg_cache_home, "torch")
+
+    for path in (cache_dir, modelscope_cache, huggingface_cache, torch_cache):
+        os.makedirs(path, exist_ok=True)
+
+    os.environ.setdefault("VGET_CACHE_DIR", cache_dir)
+    os.environ.setdefault("TMPDIR", cache_dir)
+    os.environ.setdefault("JIEBA_CACHE_DIR", cache_dir)
+    os.environ.setdefault("MODELSCOPE_CACHE", modelscope_cache)
+    os.environ.setdefault("HF_HOME", huggingface_cache)
+    os.environ.setdefault("TORCH_HOME", torch_cache)
+
+    try:
+        import jieba
+
+        jieba.dt.tmp_dir = cache_dir
+        jieba.dt.cache_file = os.path.join(cache_dir, "jieba.cache")
+    except Exception:
+        # Jieba is optional here; transcription can still proceed without this tweak.
+        pass
+
+def extract_time_range_ms(item):
+    start_ms = item.get("start")
+    end_ms = item.get("end")
+
+    if isinstance(start_ms, (int, float)) and isinstance(end_ms, (int, float)) and end_ms > start_ms:
+        return float(start_ms), float(end_ms)
+
+    timestamps = item.get("timestamp") or []
+    if timestamps and isinstance(timestamps, list):
+        first = timestamps[0]
+        last = timestamps[-1]
+        if (
+            isinstance(first, (list, tuple)) and len(first) >= 2 and
+            isinstance(last, (list, tuple)) and len(last) >= 2
+        ):
+            return float(first[0]), float(last[1])
+
+    return None, None
+
+def media_duration_seconds(audio_file: str):
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                audio_file,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return max(float(result.stdout.strip()), 0.0)
+    except Exception:
+        return None
+
+def build_subtitle_entries(clean_text: str, data: dict, audio_file: str):
+    entries = []
+    for sentence in data.get("sentence_info") or []:
+        raw_sentence = sentence.get("text", "")
+        sentence_text = rich_transcription_postprocess(raw_sentence, clean_emojis=True).strip()
+        if not sentence_text:
+            continue
+
+        start_ms, end_ms = extract_time_range_ms(sentence)
+        if start_ms is None or end_ms is None or end_ms <= start_ms:
+            continue
+
+        entries.append((start_ms / 1000.0, end_ms / 1000.0, sentence_text))
+
+    if entries:
+        return entries
+
+    fallback_text = clean_text.strip()
+    if not fallback_text:
+        return []
+
+    start_ms, end_ms = extract_time_range_ms(data)
+    if start_ms is None or end_ms is None or end_ms <= start_ms:
+        duration = media_duration_seconds(audio_file)
+        start_ms = 0.0
+        end_ms = (duration * 1000.0) if duration and duration > 0 else 1000.0
+
+    return [(start_ms / 1000.0, end_ms / 1000.0, fallback_text)]
+
+def write_subtitles(out_path: str, output_format: str, entries) -> None:
+    with open(out_path, "w", encoding="utf-8") as f:
+        if output_format == "vtt":
+            f.write("WEBVTT\n\n")
+
+        for index, (start_sec, end_sec, text) in enumerate(entries, start=1):
+            if output_format == "srt":
+                f.write(f"{index}\n")
+                f.write(f"{srt_timestamp(start_sec)} --> {srt_timestamp(end_sec)}\n")
+            else:
+                f.write(f"{vtt_timestamp(start_sec)} --> {vtt_timestamp(end_sec)}\n")
+            f.write(text + "\n\n")
+
+def generate_transcription(model, audio_file: str, want_sentence_timestamps: bool):
+    kwargs = {
+        "input": audio_file,
+        "cache": {},
+        "language": "auto",
+        "use_itn": True,
+        "batch_size_s": 60,
+        "sentence_timestamp": want_sentence_timestamps,
+    }
+
+    try:
+        return model.generate(**kwargs)
+    except KeyError as exc:
+        if want_sentence_timestamps and exc.args and exc.args[0] == "timestamp":
+            print(
+                "Warning: sentence timestamps unavailable for this file, retrying without timestamps.",
+                file=sys.stderr,
+            )
+            kwargs["sentence_timestamp"] = False
+            return model.generate(**kwargs)
+        raise
+
 def main():
     parser = argparse.ArgumentParser(description="FunASR offline transcriber")
     parser.add_argument("audio", help="Path to input audio/video file")
     parser.add_argument("--device", default="cpu", help="Device to run on (e.g., 'cpu', 'cuda:0')")
     parser.add_argument("--output_dir", required=True, help="Directory to save the transcripts")
-    parser.add_argument("--output_format", choices=["txt", "srt"], default="txt", help="Output transcript format")
+    parser.add_argument("--output_format", choices=["txt", "srt", "vtt"], default="txt", help="Output transcript format")
     
     args = parser.parse_args()
 
     audio_file = args.audio
     output_dir = args.output_dir
-    output_format = args.output_format
+    output_format = normalize_output_format(args.output_format)
 
     if not os.path.exists(audio_file):
         print(f"Error: Input file {audio_file} does not exist.", file=sys.stderr)
         sys.exit(1)
 
+    prepare_runtime_dirs()
     os.makedirs(output_dir, exist_ok=True)
     base_name = os.path.splitext(os.path.basename(audio_file))[0]
     out_path = os.path.join(output_dir, f"{base_name}.{output_format}")
@@ -50,16 +197,8 @@ def main():
     print(f"Transcribing {audio_file}...")
     start_time = time.time()
     
-    # We specify language="auto" to auto-detect, or you can force it if needed.
-    # use_itn=True for text normalisation (like Whisper's normalization).
-    res = model.generate(
-        input=audio_file, 
-        cache={}, 
-        language="auto",  
-        use_itn=True, 
-        batch_size_s=60,
-        sentence_timestamp=True
-    )
+    want_sentence_timestamps = output_format in {"srt", "vtt"}
+    res = generate_transcription(model, audio_file, want_sentence_timestamps)
 
     if not res or not len(res):
         print("Error: Empty response from model.", file=sys.stderr)
@@ -76,42 +215,9 @@ def main():
     if output_format == "txt":
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(clean_text)
-            
-    elif output_format == "srt":
-        sentences = data.get("sentence_info", [])
-        
-        with open(out_path, "w", encoding="utf-8") as f:
-            if not sentences:
-                # Fallback if no detailed timestamps are generated
-                f.write("1\n")
-                f.write("00:00:00,000 --> 00:59:59,999\n")
-                f.write(clean_text + "\n")
-            else:
-                srt_index = 1
-                for sentence in sentences:
-                    # Clean the individual sentence text from emojis and tags
-                    raw_sent = sentence.get("text", "")
-                    sent_text = rich_transcription_postprocess(raw_sent, clean_emojis=True).strip()
-                    
-                    if not sent_text:
-                        continue
-                        
-                    start_ms = sentence.get("start", 0)
-                    end_ms = sentence.get("end", 0)
-                    
-                    # Fallback to token array if 'start' and 'end' keys aren't readily available
-                    if start_ms == 0 and end_ms == 0 and "timestamp" in sentence and len(sentence["timestamp"]) > 0:
-                        start_ms = sentence["timestamp"][0][0]
-                        end_ms = sentence["timestamp"][-1][1]
-                    
-                    start_sec = start_ms / 1000.0
-                    end_sec = end_ms / 1000.0
-                    
-                    f.write(f"{srt_index}\n")
-                    f.write(f"{srt_timestamp(start_sec)} --> {srt_timestamp(end_sec)}\n")
-                    f.write(sent_text + "\n\n")
-                    
-                    srt_index += 1
+    else:
+        subtitle_entries = build_subtitle_entries(clean_text, data, audio_file)
+        write_subtitles(out_path, output_format, subtitle_entries)
 
     elapsed = time.time() - start_time
     print(f"Transcription finished in {elapsed:.2f} seconds. Output saved to {out_path}")

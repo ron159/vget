@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Folder } from "lucide-react";
+import { normalizeLanguage, supportedLanguages } from "@/i18n";
 import type { Config } from "./types";
 
 // Use global functions from main.tsx
@@ -33,7 +34,7 @@ interface GeneralSettingsProps {
 export function GeneralSettings({ config, onUpdate }: GeneralSettingsProps) {
   const { t } = useTranslation();
   const theme = config.theme || "light";
-  const language = config.language || "en";
+  const language = normalizeLanguage(config.language);
 
   useEffect(() => {
     applyTheme?.(theme);
@@ -127,20 +128,20 @@ export function GeneralSettings({ config, onUpdate }: GeneralSettingsProps) {
         </CardHeader>
         <CardContent>
           <Select
-            value={config.language}
-            onValueChange={(value) => onUpdate({ language: value })}
+            value={language}
+            onValueChange={(value) =>
+              onUpdate({ language: normalizeLanguage(value) })
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder={t("settings.general.selectLanguage")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="zh">中文</SelectItem>
-              <SelectItem value="jp">日本語</SelectItem>
-              <SelectItem value="kr">한국어</SelectItem>
-              <SelectItem value="es">Español</SelectItem>
-              <SelectItem value="fr">Français</SelectItem>
-              <SelectItem value="de">Deutsch</SelectItem>
+              {supportedLanguages.map((option) => (
+                <SelectItem key={option.code} value={option.code}>
+                  {option.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CardContent>

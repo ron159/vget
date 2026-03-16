@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ConfigRow } from "./ConfigRow";
+import { normalizeLanguage, supportedLanguages } from "../utils/languages";
 
 interface WebDAVServer {
   url: string;
@@ -9,6 +10,7 @@ interface WebDAVServer {
 
 interface UITranslations {
   settings: string;
+  edit: string;
   save: string;
   cancel: string;
   language: string;
@@ -53,6 +55,13 @@ interface ConfigEditorProps {
     username: string,
     password: string
   ) => Promise<void>;
+  onUpdateWebDAV: (
+    oldName: string,
+    name: string,
+    url: string,
+    username: string,
+    password: string
+  ) => Promise<void>;
   onDeleteWebDAV: (name: string) => Promise<void>;
 }
 
@@ -86,12 +95,14 @@ export function ConfigEditor({
   onSave,
   onCancel,
   onAddWebDAV,
+  onUpdateWebDAV,
   onDeleteWebDAV,
 }: ConfigEditorProps) {
   const [savingConfig, setSavingConfig] = useState(false);
+  const normalizedInitialLang = normalizeLanguage(initialLang);
 
   // Pending values (local state for editing)
-  const [pendingLang, setPendingLang] = useState(initialLang || "en");
+  const [pendingLang, setPendingLang] = useState(normalizedInitialLang);
   const [pendingFormat, setPendingFormat] = useState(initialFormat || "mp4");
   const [pendingQuality, setPendingQuality] = useState(
     initialQuality || "best"
@@ -120,12 +131,13 @@ export function ConfigEditor({
   const [newWebDAVUsername, setNewWebDAVUsername] = useState("");
   const [newWebDAVPassword, setNewWebDAVPassword] = useState("");
   const [addingWebDAV, setAddingWebDAV] = useState(false);
+  const [editingWebDAVName, setEditingWebDAVName] = useState<string | null>(null);
 
   const handleSave = async () => {
     setSavingConfig(true);
     try {
       await onSave({
-        language: pendingLang,
+        language: normalizeLanguage(pendingLang),
         format: pendingFormat,
         quality: pendingQuality,
         twitterAuth: pendingTwitterAuth,
@@ -143,7 +155,7 @@ export function ConfigEditor({
 
   const handleCancel = () => {
     // Reset to initial values
-    setPendingLang(initialLang || "en");
+    setPendingLang(normalizeLanguage(initialLang));
     setPendingFormat(initialFormat || "mp4");
     setPendingQuality(initialQuality || "best");
     setPendingTwitterAuth("");
@@ -158,6 +170,7 @@ export function ConfigEditor({
     setNewWebDAVUrl("");
     setNewWebDAVUsername("");
     setNewWebDAVPassword("");
+    setEditingWebDAVName(null);
     onCancel();
   };
 
@@ -180,8 +193,50 @@ export function ConfigEditor({
     }
   };
 
+  const handleStartEditWebDAV = (name: string) => {
+    const server = webdavServers[name];
+    if (!server) return;
+
+    setEditingWebDAVName(name);
+    setNewWebDAVName(name);
+    setNewWebDAVUrl(server.url);
+    setNewWebDAVUsername(server.username);
+    setNewWebDAVPassword(server.password);
+  };
+
+  const handleCancelEditWebDAV = () => {
+    setEditingWebDAVName(null);
+    setNewWebDAVName("");
+    setNewWebDAVUrl("");
+    setNewWebDAVUsername("");
+    setNewWebDAVPassword("");
+  };
+
+  const handleUpdateWebDAV = async () => {
+    if (!editingWebDAVName || !newWebDAVName.trim() || !newWebDAVUrl.trim()) {
+      return;
+    }
+
+    setAddingWebDAV(true);
+    try {
+      await onUpdateWebDAV(
+        editingWebDAVName,
+        newWebDAVName.trim(),
+        newWebDAVUrl.trim(),
+        newWebDAVUsername,
+        newWebDAVPassword
+      );
+      handleCancelEditWebDAV();
+    } finally {
+      setAddingWebDAV(false);
+    }
+  };
+
   const handleDeleteWebDAV = async (name: string) => {
     await onDeleteWebDAV(name);
+    if (editingWebDAVName === name) {
+      handleCancelEditWebDAV();
+    }
   };
 
   const inputBaseClass =
@@ -214,9 +269,9 @@ export function ConfigEditor({
         <ConfigRow
           label={t.language}
           value={pendingLang}
-          options={["en", "zh", "jp", "kr", "es", "fr", "de"]}
+          options={[...supportedLanguages]}
           disabled={!isConnected || savingConfig}
-          onChange={setPendingLang}
+          onChange={(value) => setPendingLang(normalizeLanguage(value))}
         />
         <ConfigRow
           label={t.format}
@@ -362,13 +417,22 @@ export function ConfigEditor({
                     {server.url}
                   </span>
                 </div>
-                <button
-                  className="px-2 py-1 border border-red-500 rounded bg-transparent text-red-500 text-xs cursor-pointer hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  onClick={() => handleDeleteWebDAV(name)}
-                  disabled={!isConnected}
-                >
-                  {t.delete}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-2 py-1 border border-zinc-300 dark:border-zinc-700 rounded bg-transparent text-zinc-600 dark:text-zinc-300 text-xs cursor-pointer hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => handleStartEditWebDAV(name)}
+                    disabled={!isConnected || addingWebDAV}
+                  >
+                    {t.edit}
+                  </button>
+                  <button
+                    className="px-2 py-1 border border-red-500 rounded bg-transparent text-red-500 text-xs cursor-pointer hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => handleDeleteWebDAV(name)}
+                    disabled={!isConnected || addingWebDAV}
+                  >
+                    {t.delete}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -407,18 +471,29 @@ export function ConfigEditor({
             disabled={!isConnected || addingWebDAV}
           />
         </div>
-        <button
-          className="mt-2 w-full sm:w-auto px-3 py-1.5 border border-blue-500 rounded bg-blue-500 text-white text-sm cursor-pointer hover:bg-blue-600 hover:border-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          onClick={handleAddWebDAV}
-          disabled={
-            !isConnected ||
-            addingWebDAV ||
-            !newWebDAVName.trim() ||
-            !newWebDAVUrl.trim()
-          }
-        >
-          {addingWebDAV ? "..." : t.add}
-        </button>
+        <div className="mt-2 flex flex-col sm:flex-row gap-2">
+          <button
+            className="w-full sm:w-auto px-3 py-1.5 border border-blue-500 rounded bg-blue-500 text-white text-sm cursor-pointer hover:bg-blue-600 hover:border-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={editingWebDAVName ? handleUpdateWebDAV : handleAddWebDAV}
+            disabled={
+              !isConnected ||
+              addingWebDAV ||
+              !newWebDAVName.trim() ||
+              !newWebDAVUrl.trim()
+            }
+          >
+            {addingWebDAV ? "..." : editingWebDAVName ? t.save : t.add}
+          </button>
+          {editingWebDAVName && (
+            <button
+              className="w-full sm:w-auto px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded bg-transparent text-zinc-600 dark:text-zinc-300 text-sm cursor-pointer hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              onClick={handleCancelEditWebDAV}
+              disabled={addingWebDAV}
+            >
+              {t.cancel}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

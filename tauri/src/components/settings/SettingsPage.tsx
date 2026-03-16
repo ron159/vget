@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { GeneralSettings } from "./GeneralSettings";
 import { SiteSettings } from "./SiteSettings";
 import { AboutSettings } from "./AboutSettings";
+import { normalizeLanguage } from "@/i18n";
 import type { Config } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export function SettingsPage() {
         // Ensure nested objects have defaults
         setConfig({
           ...configData,
+          language: normalizeLanguage(configData.language),
           twitter: configData.twitter ?? { auth_token: null },
           bilibili: configData.bilibili ?? { cookie: null },
           server: configData.server ?? { max_concurrent: 10 },
@@ -46,7 +48,9 @@ export function SettingsPage() {
 
   const updateConfig = (updates: Partial<Config>) => {
     if (!config) return;
-    setConfig({ ...config, ...updates });
+    const nextConfig = { ...config, ...updates };
+    nextConfig.language = normalizeLanguage(nextConfig.language);
+    setConfig(nextConfig);
     setDirty(true);
   };
 
@@ -54,7 +58,12 @@ export function SettingsPage() {
     if (!config) return;
     setSaving(true);
     try {
-      await invoke("save_config", { config });
+      await invoke("save_config", {
+        config: {
+          ...config,
+          language: normalizeLanguage(config.language),
+        },
+      });
       setDirty(false);
     } catch (err) {
       console.error("Failed to save config:", err);

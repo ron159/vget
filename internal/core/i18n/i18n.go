@@ -272,18 +272,32 @@ var (
 	defaultLang       = "zh"
 )
 
-// SupportedLanguages returns all available language codes
-var SupportedLanguages = []struct {
+type LanguageOption struct {
 	Code string
 	Name string
-}{
+}
+
+// SupportedLanguages returns all available language codes
+var SupportedLanguages = []LanguageOption{
 	{"zh", "中文"},
 	{"en", "English"},
-	{"jp", "日本語"},
-	{"kr", "한국어"},
-	{"es", "Español"},
-	{"fr", "Français"},
-	{"de", "Deutsch"},
+}
+
+func SupportedLanguageCodes() []string {
+	codes := make([]string, 0, len(SupportedLanguages))
+	for _, lang := range SupportedLanguages {
+		codes = append(codes, lang.Code)
+	}
+	return codes
+}
+
+func IsSupportedLanguage(lang string) bool {
+	for _, supported := range SupportedLanguages {
+		if supported.Code == lang {
+			return true
+		}
+	}
+	return false
 }
 
 // GetTranslations returns translations for the specified language

@@ -19,6 +19,7 @@ export function ConfigPage() {
     transcribeFormat,
     saveConfig,
     addWebDAV,
+    updateWebDAV,
     deleteWebDAV,
   } = useApp();
 
@@ -45,6 +46,7 @@ export function ConfigPage() {
         onSave={handleSaveConfig}
         onCancel={() => {}}
         onAddWebDAV={addWebDAV}
+        onUpdateWebDAV={updateWebDAV}
         onDeleteWebDAV={deleteWebDAV}
       />
 

@@ -80,7 +80,7 @@ var configSetCmd = &cobra.Command{
 	Long: `Set a configuration value in config.yml.
 
 Supported keys:
-  language           Language code (en, zh, jp, kr, es, fr, de)
+  language           Language code (en, zh)
   output_dir         Default download directory
   format             Preferred format (mp4, webm, best)
   quality            Default quality (1080p, 720p, best)
@@ -207,6 +207,9 @@ func setConfigValue(cfg *config.Config, key, value string) error {
 
 	switch key {
 	case "language":
+		if !i18n.IsSupportedLanguage(value) {
+			return fmt.Errorf("unsupported language: %s (supported: %s)", value, strings.Join(i18n.SupportedLanguageCodes(), ", "))
+		}
 		cfg.Language = value
 	case "output_dir":
 		cfg.OutputDir = value

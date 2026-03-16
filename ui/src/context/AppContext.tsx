@@ -17,6 +17,7 @@ import {
   defaultTranslations,
   defaultServerTranslations,
 } from "../utils/translations";
+import { normalizeLanguage } from "../utils/languages";
 import {
   type Job,
   type HealthData,
@@ -29,6 +30,7 @@ import {
   setConfigValue,
   postDownload,
   addWebDAVServer,
+  updateWebDAVServer,
   deleteWebDAVServer,
   deleteJob,
   clearHistory,
@@ -77,6 +79,13 @@ interface AppContextType {
   updateOutputDir: (dir: string) => Promise<boolean>;
   saveConfig: (values: ConfigValues) => Promise<void>;
   addWebDAV: (
+    name: string,
+    url: string,
+    username: string,
+    password: string
+  ) => Promise<void>;
+  updateWebDAV: (
+    oldName: string,
     name: string,
     url: string,
     username: string,
@@ -152,7 +161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (jobsRes.code === 200) setJobs(jobsRes.data.jobs || []);
       if (configRes.code === 200) {
         setOutputDir(configRes.data.output_dir);
-        setConfigLang(configRes.data.language || "");
+        setConfigLang(normalizeLanguage(configRes.data.language));
         setConfigFormat(configRes.data.format || "");
         setConfigQuality(configRes.data.quality || "");
         setServerPort(configRes.data.server_port || 8080);
@@ -232,7 +241,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const saveConfig = useCallback(
     async (values: ConfigValues) => {
-      await setConfigValue("language", values.language || "en");
+      await setConfigValue("language", normalizeLanguage(values.language));
       await setConfigValue("format", values.format || "mp4");
       await setConfigValue("quality", values.quality || "best");
       await setConfigValue(
@@ -281,6 +290,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [refresh]
   );
 
+  const updateWebDAV = useCallback(
+    async (
+      oldName: string,
+      name: string,
+      url: string,
+      username: string,
+      password: string
+    ) => {
+      const res = await updateWebDAVServer(oldName, name, url, username, password);
+      if (res.code === 200) {
+        refresh();
+      }
+    },
+    [refresh]
+  );
+
   const isConnected = health?.status === "ok";
 
   return (
@@ -316,6 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateOutputDir,
         saveConfig,
         addWebDAV,
+        updateWebDAV,
         deleteWebDAV,
         showToast,
       }}
