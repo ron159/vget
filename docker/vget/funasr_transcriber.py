@@ -42,6 +42,7 @@ def main():
         model=model_dir,
         vad_model="fsmn-vad",
         vad_kwargs={"max_single_segment_time": 30000},
+        punc_model="ct-punc",
         device=args.device,
         disable_update=True
     )
