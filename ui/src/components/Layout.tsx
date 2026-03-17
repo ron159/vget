@@ -5,6 +5,7 @@ import { CiLight, CiDark } from "react-icons/ci";
 import { FaBars, FaTimes } from "react-icons/fa";
 import { FaDesktop } from "react-icons/fa6";
 import { Sidebar } from "./Sidebar";
+import { AuthScreen } from "./AuthScreen";
 import { useApp } from "../context/AppContext";
 import logo from "../assets/logo.png";
 
@@ -12,6 +13,9 @@ export function Layout() {
   const {
     health,
     isConnected,
+    authRequired,
+    authenticated,
+    authChecking,
     themePreference,
     cycleThemePreference,
     configLang,
@@ -34,6 +38,18 @@ export function Layout() {
     ) : (
       <CiLight />
     );
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white flex items-center justify-center p-4">
+        <div className="text-sm text-zinc-500 dark:text-zinc-400">{t.loading}</div>
+      </div>
+    );
+  }
+
+  if (authRequired && !authenticated) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="flex w-full h-screen md:max-w-4xl bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white transition-colors">

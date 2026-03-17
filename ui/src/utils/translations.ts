@@ -31,6 +31,13 @@ export interface UITranslations {
   theme_system: string;
   theme_dark: string;
   theme_light: string;
+  auth_required_title: string;
+  auth_required_desc: string;
+  auth_password: string;
+  auth_password_placeholder: string;
+  auth_sign_in: string;
+  auth_signing_in: string;
+  auth_login_failed: string;
   language: string;
   format: string;
   quality: string;
@@ -184,6 +191,13 @@ export const defaultTranslations: UITranslations = {
   theme_system: "System",
   theme_dark: "Dark",
   theme_light: "Light",
+  auth_required_title: "Password Required",
+  auth_required_desc: "This vget page is protected. Enter the configured API key to continue.",
+  auth_password: "Password",
+  auth_password_placeholder: "Enter password",
+  auth_sign_in: "Sign In",
+  auth_signing_in: "Signing In...",
+  auth_login_failed: "Failed to sign in",
   language: "Language",
   format: "Format",
   quality: "Quality",

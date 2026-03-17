@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
 	"time"
@@ -28,6 +29,10 @@ type JWTClaims struct {
 // GenerateTokenRequest is the request body for POST /api/auth/token
 type GenerateTokenRequest struct {
 	Payload map[string]any `json:"payload,omitempty"`
+}
+
+type CreateSessionRequest struct {
+	Password string `json:"password" binding:"required"`
 }
 
 // generateJWT creates a new JWT token signed with the api_key
@@ -65,6 +70,27 @@ func (s *Server) validateJWT(tokenString string) (*JWTClaims, error) {
 	return nil, jwt.ErrSignatureInvalid
 }
 
+func (s *Server) isAuthenticatedRequest(c *gin.Context) bool {
+	if s.apiKey == "" {
+		return true
+	}
+
+	if cookie, err := c.Cookie(SessionCookieName); err == nil {
+		if _, err := s.validateJWT(cookie); err == nil {
+			return true
+		}
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	if token, found := strings.CutPrefix(authHeader, "Bearer "); found {
+		if _, err := s.validateJWT(token); err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
 // jwtAuthMiddleware handles authentication via session cookie or Bearer token
 func (s *Server) jwtAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -82,33 +108,22 @@ func (s *Server) jwtAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Translation payload is safe to expose without authentication so the
+		// login screen can still render in the configured language.
+		if path == "/api/i18n" {
+			c.Next()
+			return
+		}
+
 		// Auth endpoints don't require auth
 		if strings.HasPrefix(path, "/api/auth/") {
 			c.Next()
 			return
 		}
 
-		// If no api_key configured, allow all requests
-		if s.apiKey == "" {
+		if s.isAuthenticatedRequest(c) {
 			c.Next()
 			return
-		}
-
-		// Check for session cookie first
-		if cookie, err := c.Cookie(SessionCookieName); err == nil {
-			if _, err := s.validateJWT(cookie); err == nil {
-				c.Next()
-				return
-			}
-		}
-
-		// Check for Bearer token in Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if token, found := strings.CutPrefix(authHeader, "Bearer "); found {
-			if _, err := s.validateJWT(token); err == nil {
-				c.Next()
-				return
-			}
 		}
 
 		// No valid authentication
@@ -153,14 +168,66 @@ func (s *Server) setSessionCookie(c *gin.Context) {
 	)
 }
 
+func (s *Server) clearSessionCookie(c *gin.Context) {
+	c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
+}
+
 // handleAuthStatus returns whether api_key is configured
 func (s *Server) handleAuthStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, Response{
 		Code: 200,
 		Data: gin.H{
 			"api_key_configured": s.apiKey != "",
+			"authenticated":      s.isAuthenticatedRequest(c),
 		},
 		Message: "auth status retrieved",
+	})
+}
+
+func (s *Server) handleCreateSession(c *gin.Context) {
+	if s.apiKey == "" {
+		c.JSON(http.StatusOK, Response{
+			Code:    200,
+			Data:    gin.H{"authenticated": true},
+			Message: "authentication not required",
+		})
+		return
+	}
+
+	var req CreateSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "password is required",
+		})
+		return
+	}
+
+	if subtle.ConstantTimeCompare([]byte(req.Password), []byte(s.apiKey)) != 1 {
+		c.JSON(http.StatusUnauthorized, Response{
+			Code:    401,
+			Data:    nil,
+			Message: "invalid password",
+		})
+		return
+	}
+
+	s.clearSessionCookie(c)
+	s.setSessionCookie(c)
+	c.JSON(http.StatusOK, Response{
+		Code:    200,
+		Data:    gin.H{"authenticated": true},
+		Message: "session created",
+	})
+}
+
+func (s *Server) handleDeleteSession(c *gin.Context) {
+	s.clearSessionCookie(c)
+	c.JSON(http.StatusOK, Response{
+		Code:    200,
+		Data:    gin.H{"authenticated": false},
+		Message: "session cleared",
 	})
 }
 

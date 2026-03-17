@@ -8,7 +8,7 @@ import {
   type PodcastEpisode,
   type PodcastSearchResult,
 } from "../utils/apis";
-import { FaArrowLeft, FaPlay, FaPodcast } from "react-icons/fa6";
+import { FaArrowLeft, FaDownload, FaPlay, FaPodcast } from "react-icons/fa6";
 
 type ViewState =
   | { type: "search" }
@@ -16,11 +16,13 @@ type ViewState =
   | { type: "channel"; channel: PodcastChannel; episodes: PodcastEpisode[] };
 
 export function PodcastPage() {
-  const { isConnected, t, configLang, showToast } = useApp();
+  const { isConnected, t, configLang, showToast, transcribe } = useApp();
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [downloadTranscribe, setDownloadTranscribe] = useState(transcribe);
+  const [submittingEpisodeId, setSubmittingEpisodeId] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>({ type: "search" });
 
   const showRequestError = (message: string | undefined, fallback: string) => {
@@ -67,16 +69,23 @@ export function PodcastPage() {
   };
 
   const handleEpisodeClick = async (episode: PodcastEpisode) => {
-    // Download the episode by submitting its URL
     if (!episode.download_url) {
       showRequestError(undefined, "Episode download URL is unavailable");
       return;
     }
 
+    if (submittingEpisodeId) {
+      return;
+    }
+
+    setSubmittingEpisodeId(episode.id);
     try {
-      // Use podcast name + episode title as filename
       const filename = `${episode.podcast_name} - ${episode.title}`;
-      const res = await postDownload(episode.download_url, filename);
+      const res = await postDownload(
+        episode.download_url,
+        filename,
+        downloadTranscribe
+      );
       if (res.code === 200) {
         showToast("success", t.podcast_download_started);
         return;
@@ -84,6 +93,8 @@ export function PodcastPage() {
       showRequestError(res.message, "Failed to start podcast download");
     } catch {
       showRequestError(undefined, "Failed to start podcast download");
+    } finally {
+      setSubmittingEpisodeId(null);
     }
   };
 
@@ -178,6 +189,23 @@ export function PodcastPage() {
         </button>
       </form>
 
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          id="podcast-transcribe-toggle"
+          checked={downloadTranscribe}
+          onChange={(e) => setDownloadTranscribe(e.target.checked)}
+          disabled={!isConnected || !!submittingEpisodeId}
+          className="rounded border-zinc-300 dark:border-zinc-700 text-blue-500 focus:ring-blue-500 bg-white dark:bg-zinc-900"
+        />
+        <label
+          htmlFor="podcast-transcribe-toggle"
+          className="text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer select-none"
+        >
+          {t.transcribe_to_text || "Transcribe Voice to Text (AI)"}
+        </label>
+      </div>
+
       {/* Loading State */}
       {(searching || loading) && (
         <div className="text-center py-12 text-zinc-400 dark:text-zinc-600">
@@ -256,6 +284,18 @@ export function PodcastPage() {
                         <div className="text-xs text-zinc-400 dark:text-zinc-500 uppercase">
                           {episode.source}
                         </div>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleEpisodeClick(episode);
+                          }}
+                          disabled={submittingEpisodeId === episode.id}
+                          className="shrink-0 px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label={t.download}
+                        >
+                          <FaDownload />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -313,6 +353,18 @@ export function PodcastPage() {
                         {episode.pub_date && ` | ${formatDate(episode.pub_date)}`}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleEpisodeClick(episode);
+                      }}
+                      disabled={submittingEpisodeId === episode.id}
+                      className="shrink-0 px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label={t.download}
+                    >
+                      <FaDownload />
+                    </button>
                   </div>
                 ))}
               </div>

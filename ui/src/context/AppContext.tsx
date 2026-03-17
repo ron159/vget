@@ -22,13 +22,15 @@ import {
   type Job,
   type HealthData,
   type WebDAVServer,
-  fetchHealth,
-  fetchJobs,
-  fetchConfig,
-  fetchI18n,
-  updateConfig,
-  setConfigValue,
-  postDownload,
+    fetchHealth,
+    fetchJobs,
+    fetchConfig,
+    fetchI18n,
+    fetchAuthStatus,
+    createSession,
+    updateConfig,
+    setConfigValue,
+    postDownload,
   addWebDAVServer,
   updateWebDAVServer,
   deleteWebDAVServer,
@@ -44,6 +46,9 @@ interface AppContextType {
   health: HealthData | null;
   isConnected: boolean;
   loading: boolean;
+  authRequired: boolean;
+  authenticated: boolean;
+  authChecking: boolean;
 
   // Jobs
   jobs: Job[];
@@ -75,6 +80,7 @@ interface AppContextType {
 
   // Actions
   refresh: () => Promise<void>;
+  login: (password: string) => Promise<{ ok: boolean; message?: string }>;
   submitDownload: (url: string, transcribe: boolean) => Promise<boolean>;
   cancelDownload: (id: string) => Promise<void>;
   removeJob: (id: string) => Promise<void>;
@@ -104,6 +110,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [authenticated, setAuthenticated] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
   const [outputDir, setOutputDir] = useState("");
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     const saved = localStorage.getItem("vget-theme");
@@ -193,11 +202,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const [healthRes, jobsRes, configRes, i18nRes] = await Promise.all([
+      const [authRes, i18nRes] = await Promise.all([
+        fetchAuthStatus(),
+        fetchI18n(),
+      ]);
+      if (authRes.code === 200) {
+        setAuthRequired(authRes.data.api_key_configured);
+        setAuthenticated(authRes.data.authenticated);
+      }
+
+      if (i18nRes.code === 200) {
+        // Merge with defaults to ensure new keys are available
+        setT({ ...defaultTranslations, ...i18nRes.data.ui });
+        setServerT({ ...defaultServerTranslations, ...i18nRes.data.server });
+      }
+
+      if (authRes.code === 200 && authRes.data.api_key_configured && !authRes.data.authenticated) {
+        setHealth(null);
+        setJobs([]);
+        return;
+      }
+
+      const [healthRes, jobsRes, configRes] = await Promise.all([
         fetchHealth(),
         fetchJobs(),
         fetchConfig(),
-        fetchI18n(),
       ]);
       if (healthRes.code === 200) setHealth(healthRes.data);
       if (jobsRes.code === 200) setJobs(jobsRes.data.jobs || []);
@@ -218,15 +247,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTranscribe(configRes.data.transcribe === true);
         setTranscribeFormat(configRes.data.transcribe_format || "txt");
       }
-      if (i18nRes.code === 200) {
-        // Merge with defaults to ensure new keys are available
-        setT({ ...defaultTranslations, ...i18nRes.data.ui });
-        setServerT({ ...defaultServerTranslations, ...i18nRes.data.server });
-      }
     } catch {
       setHealth(null);
     } finally {
       setLoading(false);
+      setAuthChecking(false);
     }
   }, []);
 
@@ -244,6 +269,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true;
       }
       return false;
+    },
+    [refresh]
+  );
+
+  const login = useCallback(
+    async (password: string) => {
+      try {
+        const res = await createSession(password);
+        if (res.code === 200) {
+          setAuthenticated(true);
+          await refresh();
+          return { ok: true };
+        }
+        return { ok: false, message: res.message };
+      } catch (error) {
+        return {
+          ok: false,
+          message: error instanceof Error ? error.message : undefined,
+        };
+      }
     },
     [refresh]
   );
@@ -356,6 +401,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         health,
         isConnected,
         loading,
+        authRequired,
+        authenticated,
+        authChecking,
         jobs,
         outputDir,
         configLang,
@@ -377,6 +425,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         themePreference,
         cycleThemePreference,
         refresh,
+        login,
         submitDownload,
         cancelDownload,
         removeJob,

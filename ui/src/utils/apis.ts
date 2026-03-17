@@ -92,6 +92,7 @@ export async function fetchHealth(): Promise<ApiResponse<HealthData>> {
 
 export interface AuthStatusData {
   api_key_configured: boolean;
+  authenticated: boolean;
 }
 
 export interface GenerateTokenData {
@@ -100,6 +101,24 @@ export interface GenerateTokenData {
 
 export async function fetchAuthStatus(): Promise<ApiResponse<AuthStatusData>> {
   const res = await fetch("/api/auth/status");
+  return res.json();
+}
+
+export async function createSession(
+  password: string
+): Promise<ApiResponse<{ authenticated: boolean }>> {
+  const res = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  return res.json();
+}
+
+export async function deleteSession(): Promise<
+  ApiResponse<{ authenticated: boolean }>
+> {
+  const res = await fetch("/api/auth/session", { method: "DELETE" });
   return res.json();
 }
 

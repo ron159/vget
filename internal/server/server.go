@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -124,6 +125,8 @@ func (s *Server) Start() error {
 
 	// Auth routes (don't require authentication)
 	api.GET("/auth/status", s.handleAuthStatus)
+	api.POST("/auth/session", s.handleCreateSession)
+	api.DELETE("/auth/session", s.handleDeleteSession)
 	api.POST("/auth/token", s.handleGenerateToken)
 
 	api.GET("/download", s.handleFileDownload) // Download local file by path
@@ -223,14 +226,8 @@ func (s *Server) setupStaticFiles(distFS fs.FS) {
 		c.FileFromFS(c.Request.URL.Path, http.FS(distFS))
 	})
 
-	// Serve other static files (favicon, etc)
-	s.engine.GET("/vite.svg", func(c *gin.Context) {
-		c.FileFromFS("vite.svg", http.FS(distFS))
-	})
-
 	// Fallback to index.html for SPA routing
 	s.engine.NoRoute(func(c *gin.Context) {
-		// Only serve index.html for non-API routes
 		if strings.HasPrefix(c.Request.URL.Path, "/api") {
 			c.JSON(http.StatusNotFound, Response{
 				Code:    404,
@@ -240,8 +237,13 @@ func (s *Server) setupStaticFiles(distFS fs.FS) {
 			return
 		}
 
-		// Set session cookie for web UI access
-		s.setSessionCookie(c)
+		requestPath := strings.TrimPrefix(path.Clean(c.Request.URL.Path), "/")
+		if requestPath != "" && requestPath != "." {
+			if info, err := fs.Stat(distFS, requestPath); err == nil && !info.IsDir() {
+				c.FileFromFS(requestPath, http.FS(distFS))
+				return
+			}
+		}
 
 		indexFile, err := fs.ReadFile(distFS, "index.html")
 		if err != nil {
