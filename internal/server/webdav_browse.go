@@ -1,8 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"path"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/guiyumin/vget/internal/core/config"
@@ -28,6 +32,17 @@ type WebDAVFileInfo struct {
 type WebDAVDownloadRequest struct {
 	Remote string   `json:"remote" binding:"required"`
 	Files  []string `json:"files" binding:"required"`
+}
+
+type WebDAVDeleteRequest struct {
+	Remote string   `json:"remote" binding:"required"`
+	Paths  []string `json:"paths" binding:"required"`
+}
+
+type WebDAVMkdirRequest struct {
+	Remote string `json:"remote" binding:"required"`
+	Path   string `json:"path"`
+	Name   string `json:"name" binding:"required"`
 }
 
 // GET /api/webdav/remotes - List all configured WebDAV servers
@@ -72,23 +87,12 @@ func (s *Server) handleWebDAVList(c *gin.Context) {
 		path = "/"
 	}
 
-	cfg := config.LoadOrDefault()
-	server := cfg.GetWebDAVServer(remoteName)
-	if server == nil {
-		c.JSON(http.StatusNotFound, Response{
-			Code:    404,
-			Data:    nil,
-			Message: "remote not found: " + remoteName,
-		})
-		return
-	}
-
-	client, err := webdav.NewClientFromConfig(server)
+	client, err := newWebDAVClientFromRemote(remoteName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			Code:    500,
 			Data:    nil,
-			Message: "failed to connect to WebDAV server: " + err.Error(),
+			Message: err.Error(),
 		})
 		return
 	}
@@ -154,17 +158,6 @@ func (s *Server) handleWebDAVDownload(c *gin.Context) {
 		return
 	}
 
-	cfg := config.LoadOrDefault()
-	server := cfg.GetWebDAVServer(req.Remote)
-	if server == nil {
-		c.JSON(http.StatusNotFound, Response{
-			Code:    404,
-			Data:    nil,
-			Message: "remote not found: " + req.Remote,
-		})
-		return
-	}
-
 	// Queue downloads for each file
 	jobIDs := make([]string, 0, len(req.Files))
 	for _, filePath := range req.Files {
@@ -191,4 +184,247 @@ func (s *Server) handleWebDAVDownload(c *gin.Context) {
 		},
 		Message: "downloads queued",
 	})
+}
+
+// POST /api/webdav/upload - Upload local files to current WebDAV directory
+func (s *Server) handleWebDAVUpload(c *gin.Context) {
+	remoteName := strings.TrimSpace(c.PostForm("remote"))
+	if remoteName == "" {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "remote is required",
+		})
+		return
+	}
+
+	currentPath := normalizeWebDAVPath(c.DefaultPostForm("path", "/"))
+	client, err := newWebDAVClientFromRemote(remoteName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid multipart form",
+		})
+		return
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "no files uploaded",
+		})
+		return
+	}
+
+	uploaded := make([]string, 0, len(files))
+	for _, fileHeader := range files {
+		filename, err := sanitizeWebDAVName(filepath.Base(fileHeader.Filename))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, Response{
+				Code:    400,
+				Data:    nil,
+				Message: fmt.Sprintf("invalid filename %q: %v", fileHeader.Filename, err),
+			})
+			return
+		}
+
+		src, err := fileHeader.Open()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to open uploaded file: %v", err),
+			})
+			return
+		}
+
+		targetPath := joinWebDAVPath(currentPath, filename)
+		uploadErr := client.Upload(c.Request.Context(), targetPath, src)
+		src.Close()
+		if uploadErr != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to upload %s: %v", filename, uploadErr),
+			})
+			return
+		}
+
+		uploaded = append(uploaded, targetPath)
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"uploaded": uploaded,
+			"count":    len(uploaded),
+		},
+		Message: "upload completed",
+	})
+}
+
+// DELETE /api/webdav/files - Delete file(s) or folder(s)
+func (s *Server) handleWebDAVDelete(c *gin.Context) {
+	var req WebDAVDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if len(req.Paths) == 0 {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "no paths specified",
+		})
+		return
+	}
+
+	client, err := newWebDAVClientFromRemote(req.Remote)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	for _, filePath := range req.Paths {
+		if err := client.Remove(c.Request.Context(), normalizeWebDAVPath(filePath)); err != nil {
+			c.JSON(http.StatusInternalServerError, Response{
+				Code:    500,
+				Data:    nil,
+				Message: fmt.Sprintf("failed to delete %s: %v", filePath, err),
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"deleted": req.Paths,
+			"count":   len(req.Paths),
+		},
+		Message: "delete completed",
+	})
+}
+
+// POST /api/webdav/mkdir - Create directory
+func (s *Server) handleWebDAVMkdir(c *gin.Context) {
+	var req WebDAVMkdirRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	dirName, err := sanitizeWebDAVName(req.Name)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Code:    400,
+			Data:    nil,
+			Message: "invalid directory name: " + err.Error(),
+		})
+		return
+	}
+
+	client, err := newWebDAVClientFromRemote(req.Remote)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	targetPath := joinWebDAVPath(normalizeWebDAVPath(req.Path), dirName)
+	if err := client.Mkdir(c.Request.Context(), targetPath); err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Code:    500,
+			Data:    nil,
+			Message: fmt.Sprintf("failed to create directory: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 200,
+		Data: gin.H{
+			"path": targetPath,
+			"name": dirName,
+		},
+		Message: "directory created",
+	})
+}
+
+func newWebDAVClientFromRemote(remoteName string) (*webdav.Client, error) {
+	cfg := config.LoadOrDefault()
+	server := cfg.GetWebDAVServer(remoteName)
+	if server == nil {
+		return nil, fmt.Errorf("remote not found: %s", remoteName)
+	}
+
+	client, err := webdav.NewClientFromConfig(server)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to WebDAV server: %w", err)
+	}
+	return client, nil
+}
+
+func normalizeWebDAVPath(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "/" {
+		return "/"
+	}
+
+	cleaned := path.Clean("/" + strings.TrimPrefix(raw, "/"))
+	if cleaned == "." {
+		return "/"
+	}
+	return cleaned
+}
+
+func joinWebDAVPath(parentPath, name string) string {
+	parentPath = normalizeWebDAVPath(parentPath)
+	if parentPath == "/" {
+		return "/" + name
+	}
+	return path.Join(parentPath, name)
+}
+
+func sanitizeWebDAVName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("name is required")
+	}
+	if name == "." || name == ".." {
+		return "", fmt.Errorf("name is not allowed")
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return "", fmt.Errorf("path separators are not allowed")
+	}
+	return name, nil
 }

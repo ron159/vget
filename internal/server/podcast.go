@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,8 @@ import (
 var podcastHTTPClient = &http.Client{
 	Timeout: 15 * time.Second,
 }
+
+var podcastHTMLTagPattern = regexp.MustCompile(`<[^>]+>`)
 
 // Podcast search types
 
@@ -63,12 +66,41 @@ func checkPodcastUpstreamStatus(resp *http.Response) error {
 	}
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-	msg := strings.TrimSpace(string(body))
+	msg := summarizePodcastUpstreamBody(body)
 	if msg == "" {
 		return fmt.Errorf("upstream returned %s", resp.Status)
 	}
 
 	return fmt.Errorf("upstream returned %s: %s", resp.Status, msg)
+}
+
+func summarizePodcastUpstreamBody(body []byte) string {
+	msg := strings.TrimSpace(string(body))
+	if msg == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(msg)
+	if strings.Contains(lower, "<html") {
+		titleStart := strings.Index(lower, "<title")
+		if titleStart >= 0 {
+			if openEnd := strings.Index(lower[titleStart:], ">"); openEnd >= 0 {
+				titleEndStart := titleStart + openEnd + 1
+				if titleEnd := strings.Index(lower[titleEndStart:], "</title>"); titleEnd >= 0 {
+					msg = strings.TrimSpace(msg[titleEndStart : titleEndStart+titleEnd])
+				}
+			}
+		}
+		if strings.Contains(msg, "<") {
+			msg = podcastHTMLTagPattern.ReplaceAllString(msg, " ")
+		}
+	}
+
+	msg = strings.Join(strings.Fields(msg), " ")
+	if len(msg) > 180 {
+		msg = msg[:177] + "..."
+	}
+	return msg
 }
 
 // containsChinese checks if string contains Chinese characters
@@ -106,17 +138,24 @@ func (s *Server) handlePodcastSearch(c *gin.Context) {
 	// Determine which sources to search based on language and query
 	if lang == "zh" {
 		if containsChinese(req.Query) {
-			// Chinese query: search xiaoyuzhou only
+			// Prefer Xiaoyuzhou for Chinese queries, but fall back to iTunes if its
+			// search endpoint is unavailable so the UI still returns usable results.
 			result, err := searchXiaoyuzhouAPI(req.Query)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, Response{
-					Code:    500,
-					Data:    nil,
-					Message: fmt.Sprintf("xiaoyuzhou search failed: %v", err),
-				})
-				return
+			if err == nil {
+				results = append(results, *result)
+			} else {
+				fallbackResult, fallbackErr := searchITunesAPI(req.Query)
+				if fallbackErr != nil {
+					c.JSON(http.StatusInternalServerError, Response{
+						Code:    500,
+						Data:    nil,
+						Message: fmt.Sprintf("podcast search failed: xiaoyuzhou: %v; itunes: %v", err, fallbackErr),
+					})
+					return
+				}
+
+				results = append(results, *fallbackResult)
 			}
-			results = append(results, *result)
 		} else {
 			// English query with zh lang: search both
 			var wg sync.WaitGroup

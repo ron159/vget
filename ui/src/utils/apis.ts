@@ -350,6 +350,50 @@ export async function submitWebDAVDownload(
   return res.json();
 }
 
+export async function uploadWebDAVFiles(
+  remote: string,
+  path: string,
+  files: File[]
+): Promise<ApiResponse<{ uploaded: string[]; count: number }>> {
+  const formData = new FormData();
+  formData.append("remote", remote);
+  formData.append("path", path);
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const res = await fetch("/api/webdav/upload", {
+    method: "POST",
+    body: formData,
+  });
+  return res.json();
+}
+
+export async function createWebDAVDirectory(
+  remote: string,
+  path: string,
+  name: string
+): Promise<ApiResponse<{ path: string; name: string }>> {
+  const res = await fetch("/api/webdav/mkdir", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ remote, path, name }),
+  });
+  return res.json();
+}
+
+export async function deleteWebDAVFiles(
+  remote: string,
+  paths: string[]
+): Promise<ApiResponse<{ deleted: string[]; count: number }>> {
+  const res = await fetch("/api/webdav/files", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ remote, paths }),
+  });
+  return res.json();
+}
+
 // Podcast APIs
 
 export interface PodcastChannel {

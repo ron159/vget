@@ -100,107 +100,133 @@ type SearchTranslations struct {
 }
 
 type TwitterTranslations struct {
-	EnterAuthToken    string `yaml:"enter_auth_token"`
-	AuthSaved         string `yaml:"auth_saved"`
-	AuthCanDownload   string `yaml:"auth_can_download"`
-	AuthCleared       string `yaml:"auth_cleared"`
-	AuthRequired      string `yaml:"auth_required"`
-	NsfwLoginRequired string `yaml:"nsfw_login_required"`
-	ProtectedTweet    string `yaml:"protected_tweet"`
-	TweetUnavailable  string `yaml:"tweet_unavailable"`
-	AuthHint             string `yaml:"auth_hint"`
-	DeprecatedSet        string `yaml:"deprecated_set"`
-	DeprecatedClear      string `yaml:"deprecated_clear"`
-	DeprecatedUseNew     string `yaml:"deprecated_use_new"`
+	EnterAuthToken        string `yaml:"enter_auth_token"`
+	AuthSaved             string `yaml:"auth_saved"`
+	AuthCanDownload       string `yaml:"auth_can_download"`
+	AuthCleared           string `yaml:"auth_cleared"`
+	AuthRequired          string `yaml:"auth_required"`
+	NsfwLoginRequired     string `yaml:"nsfw_login_required"`
+	ProtectedTweet        string `yaml:"protected_tweet"`
+	TweetUnavailable      string `yaml:"tweet_unavailable"`
+	AuthHint              string `yaml:"auth_hint"`
+	DeprecatedSet         string `yaml:"deprecated_set"`
+	DeprecatedClear       string `yaml:"deprecated_clear"`
+	DeprecatedUseNew      string `yaml:"deprecated_use_new"`
 	DeprecatedUseNewUnset string `yaml:"deprecated_use_new_unset"`
 }
 
 type SitesTranslations struct {
-	ConfigureSite   string `yaml:"configure_site"`
-	DomainMatch     string `yaml:"domain_match"`
-	SelectType      string `yaml:"select_type"`
-	OnlyM3u8ForNow  string `yaml:"only_m3u8_for_now"`
-	ExistingSites   string `yaml:"existing_sites"`
-	SiteAdded       string `yaml:"site_added"`
-	SavedTo         string `yaml:"saved_to"`
-	Cancelled       string `yaml:"cancelled"`
-	EnterConfirm    string `yaml:"enter_confirm"`
-	EscCancel       string `yaml:"esc_cancel"`
+	ConfigureSite  string `yaml:"configure_site"`
+	DomainMatch    string `yaml:"domain_match"`
+	SelectType     string `yaml:"select_type"`
+	OnlyM3u8ForNow string `yaml:"only_m3u8_for_now"`
+	ExistingSites  string `yaml:"existing_sites"`
+	SiteAdded      string `yaml:"site_added"`
+	SavedTo        string `yaml:"saved_to"`
+	Cancelled      string `yaml:"cancelled"`
+	EnterConfirm   string `yaml:"enter_confirm"`
+	EscCancel      string `yaml:"esc_cancel"`
 }
 
 // UITranslations holds translations for the web UI
 type UITranslations struct {
-	DownloadTo       string `yaml:"download_to" json:"download_to"`
-	Edit             string `yaml:"edit" json:"edit"`
-	Save             string `yaml:"save" json:"save"`
-	Cancel           string `yaml:"cancel" json:"cancel"`
-	PasteURL         string `yaml:"paste_url" json:"paste_url"`
-	Download         string `yaml:"download" json:"download"`
-	BulkDownload     string `yaml:"bulk_download" json:"bulk_download"`
-	ComingSoon       string `yaml:"coming_soon" json:"coming_soon"`
-	BulkPasteURLs    string `yaml:"bulk_paste_urls" json:"bulk_paste_urls"`
-	BulkSelectFile   string `yaml:"bulk_select_file" json:"bulk_select_file"`
-	BulkDragDrop     string `yaml:"bulk_drag_drop" json:"bulk_drag_drop"`
-	BulkURLCount     string `yaml:"bulk_url_count" json:"bulk_url_count"`
-	BulkSubmitAll    string `yaml:"bulk_submit_all" json:"bulk_submit_all"`
-	BulkSubmitting   string `yaml:"bulk_submitting" json:"bulk_submitting"`
-	BulkClear        string `yaml:"bulk_clear" json:"bulk_clear"`
-	BulkInvalidHint  string `yaml:"bulk_invalid_hint" json:"bulk_invalid_hint"`
-	Adding           string `yaml:"adding" json:"adding"`
-	Jobs             string `yaml:"jobs" json:"jobs"`
-	Total            string `yaml:"total" json:"total"`
-	NoDownloads      string `yaml:"no_downloads" json:"no_downloads"`
-	PasteHint        string `yaml:"paste_hint" json:"paste_hint"`
-	Queued           string `yaml:"queued" json:"queued"`
-	Downloading      string `yaml:"downloading" json:"downloading"`
-	Completed        string `yaml:"completed" json:"completed"`
-	Failed           string `yaml:"failed" json:"failed"`
-	Cancelled        string `yaml:"cancelled" json:"cancelled"`
-	Settings         string `yaml:"settings" json:"settings"`
-	Language         string `yaml:"language" json:"language"`
-	Format           string `yaml:"format" json:"format"`
-	Quality          string `yaml:"quality" json:"quality"`
-	TwitterAuth      string `yaml:"twitter_auth" json:"twitter_auth"`
-	ServerPort       string `yaml:"server_port" json:"server_port"`
-	MaxConcurrent    string `yaml:"max_concurrent" json:"max_concurrent"`
-	APIKey           string `yaml:"api_key" json:"api_key"`
-	WebDAVServers    string `yaml:"webdav_servers" json:"webdav_servers"`
-	Add              string `yaml:"add" json:"add"`
-	Delete           string `yaml:"delete" json:"delete"`
-	Name             string `yaml:"name" json:"name"`
-	URL              string `yaml:"url" json:"url"`
-	Username         string `yaml:"username" json:"username"`
-	Password         string `yaml:"password" json:"password"`
-	NoWebDAVServers  string `yaml:"no_webdav_servers" json:"no_webdav_servers"`
-	Configured       string `yaml:"configured" json:"configured"`
-	NotConfigured    string `yaml:"not_configured" json:"not_configured"`
-	ClearHistory     string `yaml:"clear_history" json:"clear_history"`
-	ClearAll         string `yaml:"clear_all" json:"clear_all"`
+	DownloadTo      string `yaml:"download_to" json:"download_to"`
+	Edit            string `yaml:"edit" json:"edit"`
+	Save            string `yaml:"save" json:"save"`
+	Cancel          string `yaml:"cancel" json:"cancel"`
+	PasteURL        string `yaml:"paste_url" json:"paste_url"`
+	Download        string `yaml:"download" json:"download"`
+	BulkDownload    string `yaml:"bulk_download" json:"bulk_download"`
+	ComingSoon      string `yaml:"coming_soon" json:"coming_soon"`
+	BulkPasteURLs   string `yaml:"bulk_paste_urls" json:"bulk_paste_urls"`
+	BulkSelectFile  string `yaml:"bulk_select_file" json:"bulk_select_file"`
+	BulkDragDrop    string `yaml:"bulk_drag_drop" json:"bulk_drag_drop"`
+	BulkURLCount    string `yaml:"bulk_url_count" json:"bulk_url_count"`
+	BulkSubmitAll   string `yaml:"bulk_submit_all" json:"bulk_submit_all"`
+	BulkSubmitting  string `yaml:"bulk_submitting" json:"bulk_submitting"`
+	BulkClear       string `yaml:"bulk_clear" json:"bulk_clear"`
+	BulkInvalidHint string `yaml:"bulk_invalid_hint" json:"bulk_invalid_hint"`
+	Adding          string `yaml:"adding" json:"adding"`
+	Jobs            string `yaml:"jobs" json:"jobs"`
+	Total           string `yaml:"total" json:"total"`
+	NoDownloads     string `yaml:"no_downloads" json:"no_downloads"`
+	PasteHint       string `yaml:"paste_hint" json:"paste_hint"`
+	Queued          string `yaml:"queued" json:"queued"`
+	Downloading     string `yaml:"downloading" json:"downloading"`
+	Completed       string `yaml:"completed" json:"completed"`
+	Failed          string `yaml:"failed" json:"failed"`
+	Cancelled       string `yaml:"cancelled" json:"cancelled"`
+	Settings        string `yaml:"settings" json:"settings"`
+	ThemeMode       string `yaml:"theme_mode" json:"theme_mode"`
+	ThemeSystem     string `yaml:"theme_system" json:"theme_system"`
+	ThemeDark       string `yaml:"theme_dark" json:"theme_dark"`
+	ThemeLight      string `yaml:"theme_light" json:"theme_light"`
+	Language        string `yaml:"language" json:"language"`
+	Format          string `yaml:"format" json:"format"`
+	Quality         string `yaml:"quality" json:"quality"`
+	TwitterAuth     string `yaml:"twitter_auth" json:"twitter_auth"`
+	ServerPort      string `yaml:"server_port" json:"server_port"`
+	MaxConcurrent   string `yaml:"max_concurrent" json:"max_concurrent"`
+	APIKey          string `yaml:"api_key" json:"api_key"`
+	WebDAVServers   string `yaml:"webdav_servers" json:"webdav_servers"`
+	Add             string `yaml:"add" json:"add"`
+	Delete          string `yaml:"delete" json:"delete"`
+	Name            string `yaml:"name" json:"name"`
+	URL             string `yaml:"url" json:"url"`
+	Username        string `yaml:"username" json:"username"`
+	Password        string `yaml:"password" json:"password"`
+	NoWebDAVServers string `yaml:"no_webdav_servers" json:"no_webdav_servers"`
+	Configured      string `yaml:"configured" json:"configured"`
+	NotConfigured   string `yaml:"not_configured" json:"not_configured"`
+	ClearHistory    string `yaml:"clear_history" json:"clear_history"`
+	ClearAll        string `yaml:"clear_all" json:"clear_all"`
 	// WebDAV
 	WebDAVBrowser    string `yaml:"webdav_browser" json:"webdav_browser"`
 	SelectRemote     string `yaml:"select_remote" json:"select_remote"`
 	EmptyDirectory   string `yaml:"empty_directory" json:"empty_directory"`
 	DownloadSelected string `yaml:"download_selected" json:"download_selected"`
 	SelectedFiles    string `yaml:"selected_files" json:"selected_files"`
+	UploadFiles      string `yaml:"upload_files" json:"upload_files"`
+	NewFolder        string `yaml:"new_folder" json:"new_folder"`
+	DeleteRemote     string `yaml:"delete_remote" json:"delete_remote"`
 	Loading          string `yaml:"loading" json:"loading"`
 	GoToSettings     string `yaml:"go_to_settings" json:"go_to_settings"`
 	// Torrent
-	Torrent              string `yaml:"torrent" json:"torrent"`
-	TorrentHint          string `yaml:"torrent_hint" json:"torrent_hint"`
-	TorrentSubmit        string `yaml:"torrent_submit" json:"torrent_submit"`
-	TorrentSubmitting    string `yaml:"torrent_submitting" json:"torrent_submitting"`
-	TorrentSuccess       string `yaml:"torrent_success" json:"torrent_success"`
-	TorrentNotConfigured string `yaml:"torrent_not_configured" json:"torrent_not_configured"`
-	TorrentSettings      string `yaml:"torrent_settings" json:"torrent_settings"`
-	TorrentClient        string `yaml:"torrent_client" json:"torrent_client"`
-	TorrentHost          string `yaml:"torrent_host" json:"torrent_host"`
-	TorrentTest          string `yaml:"torrent_test" json:"torrent_test"`
-	TorrentTesting       string `yaml:"torrent_testing" json:"torrent_testing"`
-	TorrentTestSuccess   string `yaml:"torrent_test_success" json:"torrent_test_success"`
-	TorrentEnabled       string `yaml:"torrent_enabled" json:"torrent_enabled"`
+	Torrent                        string `yaml:"torrent" json:"torrent"`
+	TorrentHint                    string `yaml:"torrent_hint" json:"torrent_hint"`
+	TorrentSubmit                  string `yaml:"torrent_submit" json:"torrent_submit"`
+	TorrentSubmitting              string `yaml:"torrent_submitting" json:"torrent_submitting"`
+	TorrentSuccess                 string `yaml:"torrent_success" json:"torrent_success"`
+	TorrentNotConfigured           string `yaml:"torrent_not_configured" json:"torrent_not_configured"`
+	TorrentSettings                string `yaml:"torrent_settings" json:"torrent_settings"`
+	TorrentClient                  string `yaml:"torrent_client" json:"torrent_client"`
+	TorrentHost                    string `yaml:"torrent_host" json:"torrent_host"`
+	TorrentTest                    string `yaml:"torrent_test" json:"torrent_test"`
+	TorrentTesting                 string `yaml:"torrent_testing" json:"torrent_testing"`
+	TorrentTestSuccess             string `yaml:"torrent_test_success" json:"torrent_test_success"`
+	TorrentEnabled                 string `yaml:"torrent_enabled" json:"torrent_enabled"`
+	TorrentHTTPS                   string `yaml:"torrent_https" json:"torrent_https"`
+	TorrentSavePath                string `yaml:"torrent_save_path" json:"torrent_save_path"`
+	TorrentSavePathHint            string `yaml:"torrent_save_path_hint" json:"torrent_save_path_hint"`
+	TorrentLoading                 string `yaml:"torrent_loading" json:"torrent_loading"`
+	TorrentSaveSuccess             string `yaml:"torrent_save_success" json:"torrent_save_success"`
+	TorrentSaveFailed              string `yaml:"torrent_save_failed" json:"torrent_save_failed"`
+	TorrentConnectionFailed        string `yaml:"torrent_connection_failed" json:"torrent_connection_failed"`
+	TorrentDefaultPortTransmission string `yaml:"torrent_default_port_transmission" json:"torrent_default_port_transmission"`
+	TorrentDefaultPortQBittorrent  string `yaml:"torrent_default_port_qbittorrent" json:"torrent_default_port_qbittorrent"`
+	TorrentDefaultPortSynology     string `yaml:"torrent_default_port_synology" json:"torrent_default_port_synology"`
+	TorrentClientTransmission      string `yaml:"torrent_client_transmission" json:"torrent_client_transmission"`
+	TorrentClientQBittorrent       string `yaml:"torrent_client_qbittorrent" json:"torrent_client_qbittorrent"`
+	TorrentClientSynology          string `yaml:"torrent_client_synology" json:"torrent_client_synology"`
 	// Toast
-	DownloadQueued  string `yaml:"download_queued" json:"download_queued"`
-	DownloadsQueued string `yaml:"downloads_queued" json:"downloads_queued"`
+	DownloadQueued        string `yaml:"download_queued" json:"download_queued"`
+	DownloadsQueued       string `yaml:"downloads_queued" json:"downloads_queued"`
+	Optional              string `yaml:"optional" json:"optional"`
+	Kuaidi100Title        string `yaml:"kuaidi100_title" json:"kuaidi100_title"`
+	Kuaidi100CustomerID   string `yaml:"kuaidi100_customer_id" json:"kuaidi100_customer_id"`
+	TelegramTitle         string `yaml:"telegram_title" json:"telegram_title"`
+	TelegramTDataPath     string `yaml:"telegram_tdata_path" json:"telegram_tdata_path"`
+	TelegramTDataPathHint string `yaml:"telegram_tdata_path_hint" json:"telegram_tdata_path_hint"`
 	// Podcast
 	Podcast                string `yaml:"podcast" json:"podcast"`
 	PodcastSearch          string `yaml:"podcast_search" json:"podcast_search"`
@@ -225,32 +251,32 @@ type UITranslations struct {
 	TokenUsage             string `yaml:"token_usage" json:"token_usage"`
 	TokenInvalidJSON       string `yaml:"token_invalid_json" json:"token_invalid_json"`
 	// History
-	History              string `yaml:"history" json:"history"`
-	HistoryTitle         string `yaml:"history_title" json:"history_title"`
-	HistoryEmpty         string `yaml:"history_empty" json:"history_empty"`
-	HistoryEmptyHint     string `yaml:"history_empty_hint" json:"history_empty_hint"`
-	HistoryClearAll      string `yaml:"history_clear_all" json:"history_clear_all"`
-	HistoryStats         string `yaml:"history_stats" json:"history_stats"`
+	History                string `yaml:"history" json:"history"`
+	HistoryTitle           string `yaml:"history_title" json:"history_title"`
+	HistoryEmpty           string `yaml:"history_empty" json:"history_empty"`
+	HistoryEmptyHint       string `yaml:"history_empty_hint" json:"history_empty_hint"`
+	HistoryClearAll        string `yaml:"history_clear_all" json:"history_clear_all"`
+	HistoryStats           string `yaml:"history_stats" json:"history_stats"`
 	HistoryTotalDownloaded string `yaml:"history_total_downloaded" json:"history_total_downloaded"`
 	// Transcribe
-	VoiceTranscription   string `yaml:"voice_transcription" json:"voice_transcription"`
-	TranscribeToText     string `yaml:"transcribe_to_text" json:"transcribe_to_text"`
-	TranscribeFormat     string `yaml:"transcribe_format" json:"transcribe_format"`
-	Transcribing         string `yaml:"transcribing" json:"transcribing"`
-	TranscribeDesc        string `yaml:"transcribe_desc" json:"transcribe_desc"`
-	TranscribeFilePath    string `yaml:"transcribe_file_path" json:"transcribe_file_path"`
+	VoiceTranscription     string `yaml:"voice_transcription" json:"voice_transcription"`
+	TranscribeToText       string `yaml:"transcribe_to_text" json:"transcribe_to_text"`
+	TranscribeFormat       string `yaml:"transcribe_format" json:"transcribe_format"`
+	Transcribing           string `yaml:"transcribing" json:"transcribing"`
+	TranscribeDesc         string `yaml:"transcribe_desc" json:"transcribe_desc"`
+	TranscribeFilePath     string `yaml:"transcribe_file_path" json:"transcribe_file_path"`
 	TranscribeFilePathHint string `yaml:"transcribe_file_path_hint" json:"transcribe_file_path_hint"`
-	TranscribeStarting    string `yaml:"transcribe_starting" json:"transcribe_starting"`
-	TranscribeStart       string `yaml:"transcribe_start" json:"transcribe_start"`
-	TranscribeHowItWorks  string `yaml:"transcribe_how_it_works" json:"transcribe_how_it_works"`
-	TranscribeHow1        string `yaml:"transcribe_how_1" json:"transcribe_how_1"`
-	TranscribeHow2        string `yaml:"transcribe_how_2" json:"transcribe_how_2"`
-	TranscribeHow3        string `yaml:"transcribe_how_3" json:"transcribe_how_3"`
-	TranscribeHow4        string `yaml:"transcribe_how_4" json:"transcribe_how_4"`
-	TranscribeHow5        string `yaml:"transcribe_how_5" json:"transcribe_how_5"`
-	TranscribeTaskStarted string `yaml:"transcribe_task_started" json:"transcribe_task_started"`
-	TranscribeTaskFailed  string `yaml:"transcribe_task_failed" json:"transcribe_task_failed"`
-	TranscribeNetworkErr  string `yaml:"transcribe_network_err" json:"transcribe_network_err"`
+	TranscribeStarting     string `yaml:"transcribe_starting" json:"transcribe_starting"`
+	TranscribeStart        string `yaml:"transcribe_start" json:"transcribe_start"`
+	TranscribeHowItWorks   string `yaml:"transcribe_how_it_works" json:"transcribe_how_it_works"`
+	TranscribeHow1         string `yaml:"transcribe_how_1" json:"transcribe_how_1"`
+	TranscribeHow2         string `yaml:"transcribe_how_2" json:"transcribe_how_2"`
+	TranscribeHow3         string `yaml:"transcribe_how_3" json:"transcribe_how_3"`
+	TranscribeHow4         string `yaml:"transcribe_how_4" json:"transcribe_how_4"`
+	TranscribeHow5         string `yaml:"transcribe_how_5" json:"transcribe_how_5"`
+	TranscribeTaskStarted  string `yaml:"transcribe_task_started" json:"transcribe_task_started"`
+	TranscribeTaskFailed   string `yaml:"transcribe_task_failed" json:"transcribe_task_failed"`
+	TranscribeNetworkErr   string `yaml:"transcribe_network_err" json:"transcribe_network_err"`
 }
 
 // ServerTranslations holds translations for server messages

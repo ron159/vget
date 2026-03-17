@@ -154,6 +154,9 @@ func (s *Server) Start() error {
 	api.GET("/webdav/remotes", s.handleWebDAVRemotes)
 	api.GET("/webdav/list", s.handleWebDAVList)
 	api.POST("/webdav/download", s.handleWebDAVDownload)
+	api.POST("/webdav/upload", s.handleWebDAVUpload)
+	api.POST("/webdav/mkdir", s.handleWebDAVMkdir)
+	api.DELETE("/webdav/files", s.handleWebDAVDelete)
 
 	// Torrent dispatch routes
 	api.GET("/config/torrent", s.handleGetTorrentConfig)

@@ -1,34 +1,12 @@
 import { useState } from "react";
 import { ConfigRow } from "./ConfigRow";
 import { normalizeLanguage, supportedLanguages } from "../utils/languages";
+import { type UITranslations } from "../utils/translations";
 
 interface WebDAVServer {
   url: string;
   username: string;
   password: string;
-}
-
-interface UITranslations {
-  settings: string;
-  edit: string;
-  save: string;
-  cancel: string;
-  language: string;
-  format: string;
-  quality: string;
-  twitter_auth: string;
-  server_port: string;
-  max_concurrent: string;
-  api_key: string;
-  webdav_servers: string;
-  add: string;
-  delete: string;
-  name: string;
-  url: string;
-  username: string;
-  password: string;
-  no_webdav_servers: string;
-  transcribe_format: string;
 }
 
 interface ConfigEditorProps {
@@ -336,7 +314,7 @@ export function ConfigEditor({
           <input
             type="password"
             className={inputBaseClass}
-            placeholder="(optional)"
+            placeholder={t.optional}
             value={pendingApiKey}
             onChange={(e) => setPendingApiKey(e.target.value)}
             disabled={!isConnected || savingConfig}
@@ -345,16 +323,16 @@ export function ConfigEditor({
 
         {/* Kuaidi100 Section */}
         <div className="text-sm font-semibold text-zinc-900 dark:text-white mt-4 mb-2 pt-3 border-t border-zinc-300 dark:border-zinc-700">
-          Kuaidi100 (快递查询)
+          {t.kuaidi100_title}
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
           <span className="sm:min-w-25 text-sm text-zinc-700 dark:text-zinc-200">
-            API Key
+            {t.api_key}
           </span>
           <input
             type="password"
             className={inputBaseClass}
-            placeholder="(optional)"
+            placeholder={t.optional}
             value={pendingKuaidi100Key}
             onChange={(e) => setPendingKuaidi100Key(e.target.value)}
             disabled={!isConnected || savingConfig}
@@ -362,12 +340,12 @@ export function ConfigEditor({
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
           <span className="sm:min-w-25 text-sm text-zinc-700 dark:text-zinc-200">
-            Customer ID
+            {t.kuaidi100_customer_id}
           </span>
           <input
             type="text"
             className={inputBaseClass}
-            placeholder="(optional)"
+            placeholder={t.optional}
             value={pendingKuaidi100Customer}
             onChange={(e) => setPendingKuaidi100Customer(e.target.value)}
             disabled={!isConnected || savingConfig}
@@ -377,16 +355,16 @@ export function ConfigEditor({
 
       {/* Telegram Section */}
       <div className="text-sm font-semibold text-zinc-900 dark:text-white mt-4 mb-2 pt-3 border-t border-zinc-300 dark:border-zinc-700">
-        Telegram
+        {t.telegram_title}
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
         <span className="sm:min-w-25 text-sm text-zinc-700 dark:text-zinc-200">
-          TData Path
+          {t.telegram_tdata_path}
         </span>
         <input
           type="text"
           className={inputBaseClass}
-          placeholder="Custom Telegram Desktop tdata directory path"
+          placeholder={t.telegram_tdata_path_hint}
           value={pendingTelegramTdataPath}
           onChange={(e) => setPendingTelegramTdataPath(e.target.value)}
           disabled={!isConnected || savingConfig}

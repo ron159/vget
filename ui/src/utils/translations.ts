@@ -27,6 +27,10 @@ export interface UITranslations {
   failed: string;
   cancelled: string;
   settings: string;
+  theme_mode: string;
+  theme_system: string;
+  theme_dark: string;
+  theme_light: string;
   language: string;
   format: string;
   quality: string;
@@ -50,6 +54,9 @@ export interface UITranslations {
   empty_directory: string;
   download_selected: string;
   selected_files: string;
+  upload_files: string;
+  new_folder: string;
+  delete_remote: string;
   loading: string;
   go_to_settings: string;
   // Torrent
@@ -66,9 +73,28 @@ export interface UITranslations {
   torrent_testing: string;
   torrent_test_success: string;
   torrent_enabled: string;
+  torrent_https: string;
+  torrent_save_path: string;
+  torrent_save_path_hint: string;
+  torrent_loading: string;
+  torrent_save_success: string;
+  torrent_save_failed: string;
+  torrent_connection_failed: string;
+  torrent_default_port_transmission: string;
+  torrent_default_port_qbittorrent: string;
+  torrent_default_port_synology: string;
+  torrent_client_transmission: string;
+  torrent_client_qbittorrent: string;
+  torrent_client_synology: string;
   // Toast
   download_queued: string;
   downloads_queued: string;
+  optional: string;
+  kuaidi100_title: string;
+  kuaidi100_customer_id: string;
+  telegram_title: string;
+  telegram_tdata_path: string;
+  telegram_tdata_path_hint: string;
   // Podcast
   podcast: string;
   podcast_search: string;
@@ -154,6 +180,10 @@ export const defaultTranslations: UITranslations = {
   failed: "failed",
   cancelled: "cancelled",
   settings: "Settings",
+  theme_mode: "Theme",
+  theme_system: "System",
+  theme_dark: "Dark",
+  theme_light: "Light",
   language: "Language",
   format: "Format",
   quality: "Quality",
@@ -177,6 +207,9 @@ export const defaultTranslations: UITranslations = {
   empty_directory: "Empty directory",
   download_selected: "Download Selected",
   selected_files: "selected",
+  upload_files: "Upload Files",
+  new_folder: "New Folder",
+  delete_remote: "Delete",
   loading: "Loading...",
   go_to_settings: "Go to Settings",
   // Torrent
@@ -193,9 +226,28 @@ export const defaultTranslations: UITranslations = {
   torrent_testing: "Testing...",
   torrent_test_success: "Connection successful",
   torrent_enabled: "Enable Torrent",
+  torrent_https: "HTTPS",
+  torrent_save_path: "Save Path",
+  torrent_save_path_hint: "(use client default)",
+  torrent_loading: "Loading...",
+  torrent_save_success: "Settings saved",
+  torrent_save_failed: "Failed to save",
+  torrent_connection_failed: "Connection failed",
+  torrent_default_port_transmission: "Default port: 9091",
+  torrent_default_port_qbittorrent: "Default port: 8080",
+  torrent_default_port_synology: "Default port: 5000 (HTTP) / 5001 (HTTPS)",
+  torrent_client_transmission: "Transmission",
+  torrent_client_qbittorrent: "qBittorrent",
+  torrent_client_synology: "Synology Download Station",
   // Toast
   download_queued: "Download started. Check progress on Download page.",
   downloads_queued: "downloads started. Check progress on Download page.",
+  optional: "(optional)",
+  kuaidi100_title: "Kuaidi100",
+  kuaidi100_customer_id: "Customer ID",
+  telegram_title: "Telegram",
+  telegram_tdata_path: "TData Path",
+  telegram_tdata_path_hint: "Custom Telegram Desktop tdata directory path",
   // Podcast
   podcast: "Podcast",
   podcast_search: "Search",

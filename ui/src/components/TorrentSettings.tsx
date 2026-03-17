@@ -69,13 +69,13 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
       };
       const res = await saveTorrentConfig(config);
       if (res.code === 200) {
-        setTestResult({ success: true, message: "Settings saved" });
+        setTestResult({ success: true, message: t.torrent_save_success });
         refresh();
       } else {
         setTestResult({ success: false, message: res.message });
       }
     } catch {
-      setTestResult({ success: false, message: "Failed to save" });
+      setTestResult({ success: false, message: t.torrent_save_failed });
     } finally {
       setSaving(false);
     }
@@ -95,7 +95,7 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
         setTestResult({ success: false, message: res.message });
       }
     } catch {
-      setTestResult({ success: false, message: "Connection failed" });
+      setTestResult({ success: false, message: t.torrent_connection_failed });
     } finally {
       setTesting(false);
     }
@@ -107,7 +107,7 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg p-4">
-        <div className="text-sm text-zinc-500">Loading...</div>
+        <div className="text-sm text-zinc-500">{t.torrent_loading}</div>
       </div>
     );
   }
@@ -181,9 +181,9 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
                 disabled={!isConnected || saving}
                 className="flex-1 px-2 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50 cursor-pointer"
               >
-                <option value="transmission">Transmission</option>
-                <option value="qbittorrent">qBittorrent</option>
-                <option value="synology">Synology Download Station</option>
+                <option value="transmission">{t.torrent_client_transmission}</option>
+                <option value="qbittorrent">{t.torrent_client_qbittorrent}</option>
+                <option value="synology">{t.torrent_client_synology}</option>
               </select>
             </div>
 
@@ -210,7 +210,7 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
               <input
                 type="text"
                 className={inputBaseClass}
-                placeholder="(optional)"
+                placeholder={t.optional}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={!isConnected || saving}
@@ -225,7 +225,7 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
               <input
                 type="password"
                 className={inputBaseClass}
-                placeholder="(optional)"
+                placeholder={t.optional}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={!isConnected || saving}
@@ -235,7 +235,7 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
             {/* HTTPS */}
             <div className="flex items-center gap-3">
               <span className="min-w-[120px] text-sm text-zinc-700 dark:text-zinc-200">
-                HTTPS
+                {t.torrent_https}
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -252,12 +252,12 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
             {/* Default Save Path */}
             <div className="flex items-center gap-3">
               <span className="min-w-[120px] text-sm text-zinc-700 dark:text-zinc-200">
-                Save Path
+                {t.torrent_save_path}
               </span>
               <input
                 type="text"
                 className={inputBaseClass}
-                placeholder="(use client default)"
+                placeholder={t.torrent_save_path_hint}
                 value={defaultSavePath}
                 onChange={(e) => setDefaultSavePath(e.target.value)}
                 disabled={!isConnected || saving}
@@ -267,9 +267,9 @@ export function TorrentSettings({ isConnected }: TorrentSettingsProps) {
         )}
 
         <div className="text-xs text-zinc-400 dark:text-zinc-600 mt-2">
-          {client === "transmission" && "Default port: 9091"}
-          {client === "qbittorrent" && "Default port: 8080"}
-          {client === "synology" && "Default port: 5000 (HTTP) / 5001 (HTTPS)"}
+          {client === "transmission" && t.torrent_default_port_transmission}
+          {client === "qbittorrent" && t.torrent_default_port_qbittorrent}
+          {client === "synology" && t.torrent_default_port_synology}
         </div>
       </div>
     </div>

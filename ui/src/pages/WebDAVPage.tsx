@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
@@ -6,6 +6,9 @@ import {
   fetchWebDAVRemotes,
   fetchWebDAVList,
   submitWebDAVDownload,
+  uploadWebDAVFiles,
+  createWebDAVDirectory,
+  deleteWebDAVFiles,
   type WebDAVRemote,
   type WebDAVFile,
 } from "../utils/apis";
@@ -15,6 +18,9 @@ import {
   FaChevronRight,
   FaDownload,
   FaArrowUp,
+  FaTrash,
+  FaUpload,
+  FaFolderPlus,
 } from "react-icons/fa6";
 
 function formatSize(bytes: number): string {
@@ -37,6 +43,10 @@ export function WebDAVPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load remotes on mount
   useEffect(() => {
@@ -55,34 +65,34 @@ export function WebDAVPage() {
   }, [isConnected]);
 
   // Load directory contents when remote or path changes
-  useEffect(() => {
+  const loadDirectory = useCallback(async () => {
     if (!selectedRemote) return;
 
-    const loadDirectory = async () => {
-      setLoading(true);
-      setError(null);
-      setSelectedFiles(new Set());
+    setLoading(true);
+    setError(null);
+    setSelectedFiles(new Set());
 
-      try {
-        const res = await fetchWebDAVList(selectedRemote, currentPath);
-        if (res.code === 200) {
-          setFiles(res.data.files || []);
-        } else {
-          setError(res.message);
-          setFiles([]);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load directory"
-        );
+    try {
+      const res = await fetchWebDAVList(selectedRemote, currentPath);
+      if (res.code === 200) {
+        setFiles(res.data.files || []);
+      } else {
+        setError(res.message);
         setFiles([]);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    loadDirectory();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load directory"
+      );
+      setFiles([]);
+    } finally {
+      setLoading(false);
+    }
   }, [selectedRemote, currentPath]);
+
+  useEffect(() => {
+    loadDirectory();
+  }, [loadDirectory]);
 
   // Navigate to a path
   const navigateTo = (path: string) => {
@@ -153,6 +163,95 @@ export function WebDAVPage() {
     }
   };
 
+  const handleUpload = async (list: FileList | null) => {
+    const filesToUpload = Array.from(list || []);
+    if (!selectedRemote || filesToUpload.length === 0 || uploading) return;
+
+    setUploading(true);
+    try {
+      const res = await uploadWebDAVFiles(
+        selectedRemote,
+        currentPath,
+        filesToUpload
+      );
+      if (res.code === 200) {
+        await loadDirectory();
+        showToast(
+          "success",
+          `${res.data.count} file${res.data.count > 1 ? "s" : ""} uploaded`
+        );
+      } else {
+        setError(res.message);
+        showToast("error", res.message);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to upload files";
+      setError(msg);
+      showToast("error", msg);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!selectedRemote || creatingFolder) return;
+
+    const name = window.prompt("Folder name");
+    if (!name || !name.trim()) return;
+
+    setCreatingFolder(true);
+    try {
+      const res = await createWebDAVDirectory(
+        selectedRemote,
+        currentPath,
+        name.trim()
+      );
+      if (res.code === 200) {
+        await loadDirectory();
+        showToast("success", `Folder created: ${res.data.name}`);
+      } else {
+        setError(res.message);
+        showToast("error", res.message);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to create directory";
+      setError(msg);
+      showToast("error", msg);
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
+  const handleDelete = async (file: WebDAVFile) => {
+    if (!selectedRemote || deletingPath) return;
+    const confirmed = window.confirm(
+      `Delete ${file.isDir ? "folder" : "file"} "${file.name}"?`
+    );
+    if (!confirmed) return;
+
+    setDeletingPath(file.path);
+    try {
+      const res = await deleteWebDAVFiles(selectedRemote, [file.path]);
+      if (res.code === 200) {
+        await loadDirectory();
+        showToast("success", `${file.name} deleted`);
+      } else {
+        setError(res.message);
+        showToast("error", res.message);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete item";
+      setError(msg);
+      showToast("error", msg);
+    } finally {
+      setDeletingPath(null);
+    }
+  };
+
   // Build breadcrumb parts
   const pathParts = currentPath.split("/").filter(Boolean);
 
@@ -202,24 +301,54 @@ export function WebDAVPage() {
       <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{t.webdav_browser}</h1>
 
       {/* Remote Selector */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          {t.select_remote}
-        </label>
-        <select
-          value={selectedRemote}
-          onChange={(e) => {
-            setSelectedRemote(e.target.value);
-            setCurrentPath("/");
-          }}
-          className="w-full sm:max-w-xs px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-        >
-          {remotes.map((remote) => (
-            <option key={remote.name} value={remote.name}>
-              {remote.name}
-            </option>
-          ))}
-        </select>
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            {t.select_remote}
+          </label>
+          <select
+            value={selectedRemote}
+            onChange={(e) => {
+              setSelectedRemote(e.target.value);
+              setCurrentPath("/");
+            }}
+            className="w-full sm:max-w-xs px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+          >
+            {remotes.map((remote) => (
+              <option key={remote.name} value={remote.name}>
+                {remote.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => handleUpload(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!selectedRemote || uploading || creatingFolder || !!deletingPath}
+            className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <FaUpload />
+            {uploading ? t.loading : (t.upload_files || "Upload Files")}
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateFolder}
+            disabled={!selectedRemote || creatingFolder || uploading || !!deletingPath}
+            className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <FaFolderPlus />
+            {creatingFolder ? t.loading : (t.new_folder || "New Folder")}
+          </button>
+        </div>
       </div>
 
       {/* File Browser */}
@@ -283,6 +412,7 @@ export function WebDAVPage() {
                 </div>
                 <div className="flex-1 min-w-0">{t.name}</div>
                 <div className="w-16 sm:w-24 text-right shrink-0">Size</div>
+                <div className="w-10 shrink-0"></div>
               </div>
 
               {/* Parent directory */}
@@ -297,6 +427,7 @@ export function WebDAVPage() {
                     <span>..</span>
                   </div>
                   <div className="w-16 sm:w-24 text-right text-zinc-400 shrink-0">-</div>
+                  <div className="w-10 shrink-0"></div>
                 </button>
               )}
 
@@ -338,6 +469,20 @@ export function WebDAVPage() {
                   </div>
                   <div className="w-16 sm:w-24 text-right text-zinc-500 dark:text-zinc-400 text-xs sm:text-sm shrink-0">
                     {formatSize(file.size)}
+                  </div>
+                  <div className="w-10 shrink-0 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(file);
+                      }}
+                      disabled={uploading || creatingFolder || deletingPath === file.path}
+                      className="p-2 rounded text-zinc-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={t.delete_remote || t.delete}
+                    >
+                      <FaTrash />
+                    </button>
                   </div>
                 </div>
               ))}

@@ -37,6 +37,8 @@ import {
 } from "../utils/apis";
 import { type ConfigValues } from "../components/ConfigEditor";
 
+type ThemePreference = "system" | "dark" | "light";
+
 interface AppContextType {
   // Connection state
   health: HealthData | null;
@@ -68,7 +70,8 @@ interface AppContextType {
 
   // Theme
   darkMode: boolean;
-  setDarkMode: (dark: boolean) => void;
+  themePreference: ThemePreference;
+  cycleThemePreference: () => void;
 
   // Actions
   refresh: () => Promise<void>;
@@ -102,9 +105,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [outputDir, setOutputDir] = useState("");
-  const [darkMode, setDarkModeState] = useState(() => {
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     const saved = localStorage.getItem("vget-theme");
-    return saved ? saved === "dark" : true;
+    if (saved === "dark" || saved === "light" || saved === "system") {
+      return saved;
+    }
+    return "system";
+  });
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return true;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [t, setT] = useState<UITranslations>(defaultTranslations);
   const [serverT, setServerT] = useState<ServerTranslations>(
@@ -136,8 +148,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const setDarkMode = useCallback((dark: boolean) => {
-    setDarkModeState(dark);
+  const cycleThemePreference = useCallback(() => {
+    setThemePreference((current) => {
+      if (current === "system") return "dark";
+      if (current === "dark") return "light";
+      return "system";
+    });
+  }, []);
+
+  const darkMode =
+    themePreference === "system" ? systemPrefersDark : themePreference === "dark";
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setSystemPrefersDark(event.matches);
+    };
+
+    setSystemPrefersDark(mediaQuery.matches);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
   }, []);
 
   useEffect(() => {
@@ -146,8 +185,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("vget-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem("vget-theme", themePreference);
+  }, [themePreference]);
 
   const refresh = useCallback(async () => {
     try {
@@ -332,7 +374,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         t,
         serverT,
         darkMode,
-        setDarkMode,
+        themePreference,
+        cycleThemePreference,
         refresh,
         submitDownload,
         cancelDownload,

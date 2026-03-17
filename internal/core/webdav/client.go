@@ -25,9 +25,9 @@ type Client struct {
 
 // FileInfo contains information about a remote file
 type FileInfo struct {
-	Name string
-	Path string
-	Size int64
+	Name  string
+	Path  string
+	Size  int64
 	IsDir bool
 }
 
@@ -165,6 +165,34 @@ func (c *Client) Open(ctx context.Context, filePath string) (io.ReadCloser, int6
 	return reader, info.Size, nil
 }
 
+// Upload writes a file to the remote path, replacing it if it already exists.
+func (c *Client) Upload(ctx context.Context, filePath string, body io.Reader) error {
+	req, err := c.newRequest(ctx, http.MethodPut, filePath, body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+	return c.doRequest(req)
+}
+
+// Remove deletes a file or directory recursively.
+func (c *Client) Remove(ctx context.Context, filePath string) error {
+	req, err := c.newRequest(ctx, http.MethodDelete, filePath, nil)
+	if err != nil {
+		return err
+	}
+	return c.doRequest(req)
+}
+
+// Mkdir creates a new directory.
+func (c *Client) Mkdir(ctx context.Context, dirPath string) error {
+	req, err := c.newRequest(ctx, "MKCOL", dirPath, nil)
+	if err != nil {
+		return err
+	}
+	return c.doRequest(req)
+}
+
 // IsWebDAVURL checks if a URL is a WebDAV URL or a remote path (remote:path)
 func IsWebDAVURL(rawURL string) bool {
 	return strings.HasPrefix(rawURL, "webdav://") ||
@@ -298,6 +326,37 @@ func normalizeBasePath(raw string) string {
 	}
 
 	return raw
+}
+
+func (c *Client) newRequest(ctx context.Context, method, target string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.GetFileURL(target), body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "vget")
+	if auth := c.GetAuthHeader(); auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
+	return req, nil
+}
+
+func (c *Client) doRequest(req *http.Request) error {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return nil
+	}
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	msg := strings.TrimSpace(string(body))
+	if msg == "" {
+		return fmt.Errorf("%s returned %s", req.Method, resp.Status)
+	}
+	return fmt.Errorf("%s returned %s: %s", req.Method, resp.Status, msg)
 }
 
 func (c *Client) resolveRequestPath(target string) string {

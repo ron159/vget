@@ -3,13 +3,37 @@ import { Outlet } from "@tanstack/react-router";
 import clsx from "clsx";
 import { CiLight, CiDark } from "react-icons/ci";
 import { FaBars, FaTimes } from "react-icons/fa";
+import { FaDesktop } from "react-icons/fa6";
 import { Sidebar } from "./Sidebar";
 import { useApp } from "../context/AppContext";
 import logo from "../assets/logo.png";
 
 export function Layout() {
-  const { health, isConnected, darkMode, setDarkMode, configLang } = useApp();
+  const {
+    health,
+    isConnected,
+    themePreference,
+    cycleThemePreference,
+    configLang,
+    t,
+  } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const themeLabel =
+    themePreference === "system"
+      ? t.theme_system
+      : themePreference === "dark"
+        ? t.theme_dark
+        : t.theme_light;
+
+  const themeIcon =
+    themePreference === "system" ? (
+      <FaDesktop />
+    ) : themePreference === "dark" ? (
+      <CiDark />
+    ) : (
+      <CiLight />
+    );
 
   return (
     <div className="flex w-full h-screen md:max-w-4xl bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-white transition-colors">
@@ -57,10 +81,11 @@ export function Layout() {
           <div className="flex items-center gap-2 md:gap-3">
             <button
               className="bg-transparent border border-zinc-300 dark:border-zinc-700 rounded-md px-2 py-1.5 cursor-pointer text-base leading-none transition-colors hover:border-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              onClick={() => setDarkMode(!darkMode)}
-              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={cycleThemePreference}
+              title={`${t.theme_mode}: ${themeLabel}`}
+              aria-label={`${t.theme_mode}: ${themeLabel}`}
             >
-              {darkMode ? <CiLight /> : <CiDark />}
+              {themeIcon}
             </button>
             <span className="text-zinc-400 dark:text-zinc-600 text-xs md:text-sm px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">
               {health?.version || "..."}
