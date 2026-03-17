@@ -83,17 +83,17 @@ export function TranscribePage() {
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6">
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950/40 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[auto,minmax(0,1fr)] sm:items-start">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!isConnected || submitting}
               >
                 <FaFolderOpen />
                 {t.bulk_select_file || "Select File"}
               </button>
-              <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              <span className="min-w-0 break-words text-xs leading-6 sm:text-sm text-zinc-500 dark:text-zinc-400">
                 {selectedFile
                   ? selectedFile.name
                   : t.transcribe_file_path_hint ||

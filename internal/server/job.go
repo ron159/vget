@@ -20,8 +20,8 @@ import (
 type JobStatus string
 
 const (
-	JobStatusQueued      JobStatus = "queued"
-	JobStatusDownloading JobStatus = "downloading"
+	JobStatusQueued       JobStatus = "queued"
+	JobStatusDownloading  JobStatus = "downloading"
 	JobStatusCompleted    JobStatus = "completed"
 	JobStatusFailed       JobStatus = "failed"
 	JobStatusCancelled    JobStatus = "cancelled"
@@ -295,16 +295,16 @@ func (jq *JobQueue) AddJob(rawURL, filename string, transcribe bool) (*Job, erro
 	ctx, cancel := context.WithCancel(context.Background())
 
 	job := &Job{
-		ID:        id,
-		URL:       url,
-		Filename:  filename,
+		ID:         id,
+		URL:        url,
+		Filename:   filename,
 		Status:     JobStatusQueued,
 		Progress:   0,
 		Transcribe: transcribe,
 		CreatedAt:  time.Now(),
-		UpdatedAt: time.Now(),
-		ctx:       ctx,
-		cancel:    cancel,
+		UpdatedAt:  time.Now(),
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 
 	jq.mu.Lock()
@@ -381,9 +381,7 @@ func (jq *JobQueue) updateJobStatus(id string, status JobStatus, progress float6
 		if progress > 0 {
 			job.Progress = progress
 		}
-		if errMsg != "" {
-			job.Error = errMsg
-		}
+		job.Error = errMsg
 		job.UpdatedAt = time.Now()
 	}
 }

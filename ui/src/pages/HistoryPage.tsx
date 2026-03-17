@@ -183,7 +183,7 @@ export function HistoryPage() {
                     )}
                     <span>{formatDuration(record.duration_seconds)}</span>
                   </div>
-                  {record.error && (
+                  {record.status === "failed" && record.error && (
                     <div className="text-xs text-red-500 mt-1 truncate">
                       {record.error}
                     </div>
