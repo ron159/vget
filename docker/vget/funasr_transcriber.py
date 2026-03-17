@@ -25,6 +25,15 @@ EMOJI_PATTERN = re.compile(
     "]+",
     flags=re.UNICODE,
 )
+FUNASR_TAG_PATTERN = re.compile(r"<\s*\|[^<>]+?\|\s*>", flags=re.UNICODE)
+FUNASR_NOISE_PATTERN = re.compile(
+    r"\b(?:NEUTRAL|Speech|BGM|Applause|Laughter|Cry|Cough|Sneeze|Breath|with\s*i\s*tn|withitn)\b",
+    flags=re.IGNORECASE,
+)
+SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<=[。！？!?；;…])")
+CLAUSE_BOUNDARY_PATTERN = re.compile(r"(?<=[，、,:：])")
+CHINESE_CHAR_PATTERN = re.compile(r"[\u3400-\u9FFF]")
+TEXT_CONTENT_PATTERN = re.compile(r"[A-Za-z0-9\u3400-\u9FFF]")
 
 def srt_timestamp(seconds: float) -> str:
     """Convert float seconds to SRT timestamp format (HH:MM:SS,mmm)."""
@@ -53,9 +62,50 @@ def strip_emojis(text: str) -> str:
     return EMOJI_PATTERN.sub("", text or "")
 
 
+def strip_funasr_tags(text: str) -> str:
+    if not text:
+        return ""
+    text = FUNASR_TAG_PATTERN.sub(" ", text)
+    text = FUNASR_NOISE_PATTERN.sub(" ", text)
+    return text
+
+
+def normalize_spacing(text: str) -> str:
+    if not text:
+        return ""
+
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+([，。！？；：、,.!?;:])", r"\1", text)
+    text = re.sub(r"([（《“])\s+", r"\1", text)
+    text = re.sub(r"\s+([）》”])", r"\1", text)
+    text = re.sub(r"([，。！？；：、,.!?;:])\1+", r"\1", text)
+    text = re.sub(r"…{2,}", "…", text)
+
+    chars = []
+    for ch in text:
+        if ch == " ":
+            if not chars:
+                continue
+            next_prev = chars[-1]
+            if CHINESE_CHAR_PATTERN.match(next_prev):
+                continue
+            chars.append(ch)
+            continue
+
+        if chars and chars[-1] == " " and CHINESE_CHAR_PATTERN.match(ch):
+            chars.pop()
+
+        chars.append(ch)
+        prev = ch
+
+    return "".join(chars).strip()
+
+
 def clean_transcription_text(raw_text: str) -> str:
     if not raw_text:
         return ""
+
+    raw_text = strip_funasr_tags(raw_text)
 
     try:
         parameters = inspect.signature(rich_transcription_postprocess).parameters
@@ -66,7 +116,9 @@ def clean_transcription_text(raw_text: str) -> str:
     except (TypeError, ValueError):
         text = rich_transcription_postprocess(raw_text)
 
-    return strip_emojis(text).strip()
+    text = strip_funasr_tags(text)
+    text = strip_emojis(text)
+    return normalize_spacing(text)
 
 def prepare_runtime_dirs() -> None:
     xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
@@ -135,6 +187,62 @@ def media_duration_seconds(audio_file: str):
     except Exception:
         return None
 
+
+def split_subtitle_text(text: str, max_chars: int = 28):
+    text = normalize_spacing(text)
+    if not text:
+        return []
+
+    parts = []
+    for sentence in SENTENCE_BOUNDARY_PATTERN.split(text):
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+
+        if len(sentence) <= max_chars:
+            parts.append(sentence)
+            continue
+
+        for clause in CLAUSE_BOUNDARY_PATTERN.split(sentence):
+            clause = clause.strip()
+            if not clause:
+                continue
+
+            if len(clause) <= max_chars:
+                parts.append(clause)
+                continue
+
+            start = 0
+            while start < len(clause):
+                parts.append(clause[start:start + max_chars].strip())
+                start += max_chars
+
+    return [part for part in parts if part and TEXT_CONTENT_PATTERN.search(part)]
+
+
+def estimate_subtitle_entries(text: str, start_ms: float, end_ms: float):
+    parts = split_subtitle_text(text)
+    if not parts:
+        return []
+
+    effective_end_ms = max(end_ms, start_ms + float(len(parts) * 800))
+    total_ms = max(effective_end_ms - start_ms, float(len(parts) * 800))
+    weights = [max(len(part.replace(" ", "")), 1) for part in parts]
+    weight_sum = sum(weights) or len(parts)
+
+    entries = []
+    cursor = start_ms
+    for index, part in enumerate(parts):
+        if index == len(parts) - 1:
+            next_cursor = effective_end_ms
+        else:
+            duration = max(total_ms * weights[index] / weight_sum, 800.0)
+            next_cursor = min(effective_end_ms, cursor + duration)
+        entries.append((cursor / 1000.0, next_cursor / 1000.0, part))
+        cursor = next_cursor
+
+    return entries
+
 def build_subtitle_entries(clean_text: str, data: dict, audio_file: str):
     entries = []
     for sentence in data.get("sentence_info") or []:
@@ -149,7 +257,15 @@ def build_subtitle_entries(clean_text: str, data: dict, audio_file: str):
 
         entries.append((start_ms / 1000.0, end_ms / 1000.0, sentence_text))
 
-    if entries:
+    if len(entries) > 1:
+        return entries
+
+    if len(entries) == 1:
+        only_start_ms = entries[0][0] * 1000.0
+        only_end_ms = entries[0][1] * 1000.0
+        estimated = estimate_subtitle_entries(clean_text or entries[0][2], only_start_ms, only_end_ms)
+        if len(estimated) > 1:
+            return estimated
         return entries
 
     fallback_text = clean_text.strip()
@@ -161,6 +277,10 @@ def build_subtitle_entries(clean_text: str, data: dict, audio_file: str):
         duration = media_duration_seconds(audio_file)
         start_ms = 0.0
         end_ms = (duration * 1000.0) if duration and duration > 0 else 1000.0
+
+    estimated = estimate_subtitle_entries(fallback_text, start_ms, end_ms)
+    if estimated:
+        return estimated
 
     return [(start_ms / 1000.0, end_ms / 1000.0, fallback_text)]
 
