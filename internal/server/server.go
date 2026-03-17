@@ -115,9 +115,7 @@ func (s *Server) Start() error {
 	// Add middleware
 	s.engine.Use(gin.Recovery())
 	s.engine.Use(s.loggingMiddleware())
-	if s.apiKey != "" {
-		s.engine.Use(s.jwtAuthMiddleware())
-	}
+	s.engine.Use(s.jwtAuthMiddleware())
 
 	// API routes
 	api := s.engine.Group("/api")
@@ -803,6 +801,7 @@ func (s *Server) handleSetConfig(c *gin.Context) {
 
 	// Update server's cached config
 	s.cfg = cfg
+	s.apiKey = cfg.Server.APIKey
 
 	// Special handling for output_dir
 	if req.Key == "output_dir" {
