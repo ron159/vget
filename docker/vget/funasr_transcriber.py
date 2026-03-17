@@ -34,6 +34,9 @@ SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<=[。！？!?；;…])")
 CLAUSE_BOUNDARY_PATTERN = re.compile(r"(?<=[，、,:：])")
 CHINESE_CHAR_PATTERN = re.compile(r"[\u3400-\u9FFF]")
 TEXT_CONTENT_PATTERN = re.compile(r"[A-Za-z0-9\u3400-\u9FFF]")
+SENTENCE_END_PUNCT = "。！？!?；;…"
+PAUSE_PUNCT = "，、,:："
+PUNCT_SEQUENCE_PATTERN = re.compile(rf"[{re.escape(SENTENCE_END_PUNCT + PAUSE_PUNCT)}]\s*[{re.escape(SENTENCE_END_PUNCT + PAUSE_PUNCT)}]+")
 
 def srt_timestamp(seconds: float) -> str:
     """Convert float seconds to SRT timestamp format (HH:MM:SS,mmm)."""
@@ -101,6 +104,38 @@ def normalize_spacing(text: str) -> str:
     return "".join(chars).strip()
 
 
+def collapse_redundant_punctuation(text: str) -> str:
+    if not text:
+        return ""
+
+    def replace_sequence(match: re.Match[str]) -> str:
+        raw = re.sub(r"\s+", "", match.group(0))
+        if not raw:
+            return ""
+
+        endings = [ch for ch in raw if ch in SENTENCE_END_PUNCT]
+        pauses = [ch for ch in raw if ch in PAUSE_PUNCT]
+
+        if endings:
+            for preferred in ("。", "！", "？", "；", ".", "!", "?", ";", "…"):
+                if preferred in endings:
+                    return preferred
+            return endings[-1]
+
+        if pauses:
+            for preferred in ("：", "，", "、", ":", ","):
+                if preferred in pauses:
+                    return preferred
+            return pauses[-1]
+
+        return raw[-1]
+
+    text = PUNCT_SEQUENCE_PATTERN.sub(replace_sequence, text)
+    text = re.sub(r"([。！？!?；;…])([）)》】」』”’])([，、,:：])", r"\1\2", text)
+    text = re.sub(r"([（(《【「『“‘])([，、,:：])", r"\1", text)
+    return text
+
+
 def clean_transcription_text(raw_text: str) -> str:
     if not raw_text:
         return ""
@@ -118,7 +153,8 @@ def clean_transcription_text(raw_text: str) -> str:
 
     text = strip_funasr_tags(text)
     text = strip_emojis(text)
-    return normalize_spacing(text)
+    text = normalize_spacing(text)
+    return collapse_redundant_punctuation(text)
 
 def prepare_runtime_dirs() -> None:
     xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
