@@ -65,7 +65,7 @@ type Config struct {
 	// Whisper transcription format (e.g. "txt", "srt", "vtt")
 	TranscribeFormat string `yaml:"transcribe_format,omitempty"`
 
-	// Server configuration for `vget serve`
+	// Server configuration for vget-server (the web UI)
 	Server ServerConfig `yaml:"server,omitempty"`
 
 	// Express tracking providers configuration
@@ -81,6 +81,8 @@ type Config struct {
 
 	// Torrent client configuration for dispatching magnet links
 	Torrent TorrentConfig `yaml:"torrent,omitempty"`
+
+	Serve ServeConfig `yaml:"serve,omitempty"`
 
 	// Bilibili configuration
 	Bilibili BilibiliConfig `yaml:"bilibili,omitempty"`
@@ -99,6 +101,55 @@ type BilibiliConfig struct {
 type TelegramConfig struct {
 	// TDataPath is the custom path to Telegram Desktop tdata directory
 	TDataPath string `yaml:"tdata_path,omitempty"`
+}
+
+// ServeConfig holds defaults for `vget serve`. Flags override these; the
+// account (User/Password) is re-read from the config on every request.
+type ServeConfig struct {
+	// Dir is the library directory served when `vget serve` gets no argument
+	Dir string `yaml:"dir,omitempty"`
+
+	// User and Password are the Basic Auth account clients must present
+	User     string `yaml:"user,omitempty"`
+	Password string `yaml:"password,omitempty"`
+
+	// Tailcat enables the tailcat address (default true when unset)
+	Tailcat *bool `yaml:"tailcat,omitempty"`
+
+	// Listen is an optional plain TCP address to also serve on (e.g. ":7777")
+	Listen string `yaml:"listen,omitempty"`
+
+	// RW allows clients to write to the library
+	RW bool `yaml:"rw,omitempty"`
+
+	// Inbox is a write-only drop box directory exposed at /inbox
+	Inbox string `yaml:"inbox,omitempty"`
+
+	// DERP is a self-hosted relay; empty means the public tailcat relays
+	DERP DERPConfig `yaml:"derp,omitempty"`
+
+	// Allow restricts clients to these public keys (see `vget identity`)
+	Allow []string `yaml:"allow,omitempty"`
+}
+
+// TailcatEnabled reports whether `vget serve` should open a tailcat address.
+func (s ServeConfig) TailcatEnabled() bool {
+	return s.Tailcat == nil || *s.Tailcat
+}
+
+// DERPConfig describes a self-hosted DERP relay
+type DERPConfig struct {
+	// Host is a domain name or bare IP
+	Host string `yaml:"host,omitempty"`
+
+	// Port is the relay's TLS port (default 443)
+	Port int `yaml:"port,omitempty"`
+
+	// STUNPort is the relay's STUN UDP port (default 3478)
+	STUNPort int `yaml:"stun_port,omitempty"`
+
+	// CertSHA256 is the certificate fingerprint for a self-signed relay
+	CertSHA256 string `yaml:"cert_sha256,omitempty"`
 }
 
 // TorrentConfig holds configuration for remote torrent client integration
@@ -174,10 +225,15 @@ type ServerConfig struct {
 	APIKey string `yaml:"api_key,omitempty"`
 }
 
-// WebDAVServer represents a WebDAV server configuration
+// WebDAVServer represents a WebDAV server configuration. A server is reached
+// either by URL or by tailcat address, never both.
 type WebDAVServer struct {
 	// URL is the WebDAV server URL (e.g., "https://pikpak.com/dav")
-	URL string `yaml:"url"`
+	URL string `yaml:"url,omitempty"`
+
+	// Tailcat is the tailcat address of a library served by `vget serve`.
+	// It contains the tunnel's pre-shared key: treat it like a password.
+	Tailcat string `yaml:"tailcat,omitempty"`
 
 	// Username for authentication
 	Username string `yaml:"username,omitempty"`
@@ -293,8 +349,10 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 	}
 
-	// Expand tilde in OutputDir
+	// Expand tilde in directory paths
 	cfg.OutputDir = expandPath(cfg.OutputDir)
+	cfg.Serve.Dir = expandPath(cfg.Serve.Dir)
+	cfg.Serve.Inbox = expandPath(cfg.Serve.Inbox)
 
 	return cfg, nil
 }
@@ -396,4 +454,3 @@ func LoadOrDefault() *Config {
 
 	return cfg
 }
-

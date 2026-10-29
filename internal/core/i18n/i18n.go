@@ -24,6 +24,60 @@ type Translations struct {
 	UI           UITranslations           `yaml:"ui"`
 	Server       ServerTranslations       `yaml:"server"`
 	YouTube      YouTubeTranslations      `yaml:"youtube"`
+	Tailcat      TailcatTranslations      `yaml:"tailcat"`
+}
+
+// TailcatTranslations holds translations for vget serve / send / recv / push
+// and the tailcat transport.
+type TailcatTranslations struct {
+	Serving            string `yaml:"serving"`
+	ReadOnly           string `yaml:"read_only"`
+	ReadWrite          string `yaml:"read_write"`
+	InboxAt            string `yaml:"inbox_at"`
+	ServingFiles       string `yaml:"serving_files"`
+	ExitsAfterDownload string `yaml:"exits_after_download"`
+	Receiving          string `yaml:"receiving"`
+	AddressLabel       string `yaml:"address_label"`
+	Relay              string `yaml:"relay"`
+	RelayDirectHint    string `yaml:"relay_direct_hint"`
+	RelayNoReply       string `yaml:"relay_no_reply"`
+	AlsoListening      string `yaml:"also_listening"`
+	OnOtherMachine     string `yaml:"on_other_machine"`
+	OnOtherSide        string `yaml:"on_other_side"`
+	NoAuthWarning      string `yaml:"no_auth_warning"`
+	AuthRequired       string `yaml:"auth_required"`
+	PressCtrlC         string `yaml:"press_ctrl_c"`
+	Sent               string `yaml:"sent"`
+	Received           string `yaml:"received"`
+	AuthFailed         string `yaml:"auth_failed"`
+	TransferComplete   string `yaml:"transfer_complete"`
+	Stopping           string `yaml:"stopping"`
+	IdentityCreated    string `yaml:"identity_created"`
+	RelayChanged       string `yaml:"relay_changed"`
+	Pushing            string `yaml:"pushing"`
+	PushedTo           string `yaml:"pushed_to"`
+	PushForbidden      string `yaml:"push_forbidden"`
+	PingRelayRTT       string `yaml:"ping_relay_rtt"`
+	PingDirect         string `yaml:"ping_direct"`
+	PingViaRelay       string `yaml:"ping_via_relay"`
+	PingNoDirect       string `yaml:"ping_no_direct"`
+	IdentityAddress    string `yaml:"identity_address"`
+	IdentityFullHint   string `yaml:"identity_full_hint"`
+	IdentityClientKey  string `yaml:"identity_client_key"`
+	IdentityClientHint string `yaml:"identity_client_key_hint"`
+	IdentityRotated    string `yaml:"identity_rotated"`
+	IdentityCreating   string `yaml:"identity_creating"`
+	IdentityNone       string `yaml:"identity_none"`
+	SelectHint         string `yaml:"select_hint"`
+	DownloadingN       string `yaml:"downloading_n"`
+	NothingSelected    string `yaml:"nothing_selected"`
+	DerpReachable      string `yaml:"derp_reachable"`
+	DerpUnreachable    string `yaml:"derp_unreachable"`
+	DerpCertTrusted    string `yaml:"derp_cert_trusted"`
+	DerpCertSelfSigned string `yaml:"derp_cert_self_signed"`
+	DerpCertHint       string `yaml:"derp_cert_hint"`
+	DerpStunOK         string `yaml:"derp_stun_ok"`
+	DerpStunFailed     string `yaml:"derp_stun_failed"`
 }
 
 type ConfigTranslations struct {
