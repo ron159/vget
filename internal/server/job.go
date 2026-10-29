@@ -12,7 +12,6 @@ import (
 
 	"github.com/guiyumin/vget/internal/core/config"
 	"github.com/guiyumin/vget/internal/core/extractor"
-	"github.com/guiyumin/vget/internal/core/i18n"
 	"github.com/guiyumin/vget/internal/core/transcriber"
 )
 
@@ -30,17 +29,19 @@ const (
 
 // Job represents a download job
 type Job struct {
-	ID         string    `json:"id"`
-	URL        string    `json:"url"`
-	Filename   string    `json:"filename,omitempty"`
-	Status     JobStatus `json:"status"`
-	Progress   float64   `json:"progress"`
-	Downloaded int64     `json:"downloaded"` // bytes downloaded
-	Total      int64     `json:"total"`      // total bytes (-1 if unknown)
-	Error      string    `json:"error,omitempty"`
-	Transcribe bool      `json:"transcribe,omitempty"` // whether to transcribe post-download
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID                     string     `json:"id"`
+	URL                    string     `json:"url"`
+	Filename               string     `json:"filename,omitempty"`
+	Status                 JobStatus  `json:"status"`
+	Progress               float64    `json:"progress"`
+	Downloaded             int64      `json:"downloaded"` // bytes downloaded
+	Total                  int64      `json:"total"`      // total bytes (-1 if unknown)
+	Error                  string     `json:"error,omitempty"`
+	Transcribe             bool       `json:"transcribe,omitempty"` // whether to transcribe post-download
+	TranscriptionStage     string     `json:"transcription_stage,omitempty"`
+	TranscriptionStartedAt *time.Time `json:"transcription_started_at,omitempty"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
 
 	// Internal fields (not serialized)
 	cancel context.CancelFunc `json:"-"`
@@ -143,13 +144,7 @@ func (jq *JobQueue) processJob(job *Job) {
 
 	// Begin Whisper Transcription hook if requested
 	if job.Transcribe {
-		transcribingMsg := "transcribing audio (this may take a while)..."
-		cfg := config.LoadOrDefault()
-		t := i18n.GetTranslations(cfg.Language)
-		if t != nil && t.UI.VoiceTranscription != "" && t.UI.Transcribing != "" {
-			transcribingMsg = t.UI.Transcribing
-		}
-		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, transcribingMsg)
+		jq.updateJobStatus(job.ID, JobStatusTranscribing, 0, "")
 		// We read job.Filename again from the jobs map because downloadFn (updateJobFilename) might have updated it.
 		jq.mu.RLock()
 		actualFilename := job.Filename
@@ -160,7 +155,7 @@ func (jq *JobQueue) processJob(job *Job) {
 			if !filepath.IsAbs(actualFilename) {
 				fullPath = filepath.Join(cfg.OutputDir, actualFilename)
 			}
-			err := transcriber.TranscribeAudio(job.ctx, fullPath, cfg.TranscribeFormat)
+			err := transcriber.TranscribeAudio(job.ctx, fullPath, cfg.TranscribeFormat, func(stage string) { jq.updateTranscriptionStage(job.ID, stage) })
 			if err != nil {
 				log.Printf("Transcription failed for job %s: %v", job.ID, err)
 				jq.updateJobStatus(job.ID, JobStatusFailed, 100, fmt.Sprintf("Download completed, but transcription failed: %v", err))
@@ -361,8 +356,8 @@ func (jq *JobQueue) CancelJob(id string) bool {
 		return false
 	}
 
-	// Can only cancel queued or downloading jobs
-	if job.Status != JobStatusQueued && job.Status != JobStatusDownloading {
+	// Active download and transcription jobs can be cancelled.
+	if job.Status != JobStatusQueued && job.Status != JobStatusDownloading && job.Status != JobStatusTranscribing {
 		return false
 	}
 
@@ -377,9 +372,15 @@ func (jq *JobQueue) updateJobStatus(id string, status JobStatus, progress float6
 	defer jq.mu.Unlock()
 
 	if job, ok := jq.jobs[id]; ok {
+		if job.Status == JobStatusCancelled {
+			return
+		}
 		job.Status = status
-		if progress > 0 {
-			job.Progress = progress
+		job.Progress = progress
+		if status == JobStatusTranscribing {
+			now := time.Now()
+			job.TranscriptionStartedAt = &now
+			job.TranscriptionStage = "loading_model"
 		}
 		job.Error = errMsg
 		job.UpdatedAt = time.Now()
@@ -406,4 +407,13 @@ func generateJobID() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func (jq *JobQueue) updateTranscriptionStage(id, stage string) {
+	jq.mu.Lock()
+	defer jq.mu.Unlock()
+	if job, ok := jq.jobs[id]; ok && job.Status == JobStatusTranscribing {
+		job.TranscriptionStage = stage
+		job.UpdatedAt = time.Now()
+	}
 }

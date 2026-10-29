@@ -332,6 +332,14 @@ type UITranslations struct {
 	TranscribeHowItWorks   string `yaml:"transcribe_how_it_works" json:"transcribe_how_it_works"`
 	TranscribeHow1         string `yaml:"transcribe_how_1" json:"transcribe_how_1"`
 	TranscribeHow2         string `yaml:"transcribe_how_2" json:"transcribe_how_2"`
+	TranscribeLoadingModel string `yaml:"transcribe_loading_model" json:"transcribe_loading_model"`
+	TranscribeRecognizing  string `yaml:"transcribe_recognizing" json:"transcribe_recognizing"`
+	TranscribeWriting      string `yaml:"transcribe_writing" json:"transcribe_writing"`
+	TranscribeElapsed      string `yaml:"transcribe_elapsed" json:"transcribe_elapsed"`
+	TranscribeTimeUnknown  string `yaml:"transcribe_time_unknown" json:"transcribe_time_unknown"`
+	TranscribeJobs         string `yaml:"transcribe_jobs" json:"transcribe_jobs"`
+	TranscribeNoJobs       string `yaml:"transcribe_no_jobs" json:"transcribe_no_jobs"`
+	TranscribeUploading    string `yaml:"transcribe_uploading" json:"transcribe_uploading"`
 	TranscribeHow3         string `yaml:"transcribe_how_3" json:"transcribe_how_3"`
 	TranscribeHow4         string `yaml:"transcribe_how_4" json:"transcribe_how_4"`
 	TranscribeHow5         string `yaml:"transcribe_how_5" json:"transcribe_how_5"`

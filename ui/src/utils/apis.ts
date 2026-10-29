@@ -18,6 +18,10 @@ export interface Job {
   filename?: string;
   error?: string;
   transcribe?: boolean;
+  transcription_stage?: "loading_model" | "transcribing" | "writing";
+  transcription_started_at?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ApiResponse<T> {

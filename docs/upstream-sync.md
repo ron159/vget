@@ -23,3 +23,6 @@ so future syncs can start from this reviewed integration point.
 
 Validation: full Go tests, Web UI production build, and an HTTP WebDAV regression
 covering a configured endpoint subpath, nested directories, upload, read and delete.
+
+Use this fork's image (`ghcr.io/ron159/vget`) when updating a transcription
+installation. The upstream image follows the reduced upstream feature set.

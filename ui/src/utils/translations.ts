@@ -151,6 +151,15 @@ export interface UITranslations {
   transcribe_task_started: string;
   transcribe_task_failed: string;
   transcribe_network_err: string;
+  transcribe_loading_model: string;
+  transcribe_recognizing: string;
+  transcribe_writing: string;
+  transcribe_elapsed: string;
+  transcribe_time_unknown: string;
+  transcribe_jobs: string;
+  transcribe_no_jobs: string;
+  transcribe_uploading: string;
+
 }
 
 export interface ServerTranslations {
@@ -295,6 +304,14 @@ export const defaultTranslations: UITranslations = {
   history_total_downloaded: "Total Downloaded",
   // Transcribe
   voice_transcription: "Voice Transcription",
+  transcribe_loading_model: "Loading speech model",
+  transcribe_recognizing: "Recognizing speech",
+  transcribe_writing: "Writing transcript",
+  transcribe_elapsed: "Elapsed",
+  transcribe_time_unknown: "Remaining time cannot be estimated yet. Long recordings and the first model load can take a while.",
+  transcribe_jobs: "Transcription tasks",
+  transcribe_no_jobs: "Your transcription tasks and their progress will appear here.",
+  transcribe_uploading: "Uploading file, please wait…",
   transcribe_to_text: "Transcribe Voice to Text (AI)",
   transcribe_format: "Transcription Format",
   transcribe_desc: "Convert local or previously downloaded audio/video files to text using AI.",
@@ -305,8 +322,8 @@ export const defaultTranslations: UITranslations = {
   transcribe_how_it_works: "How it works",
   transcribe_how_1: "The transcription uses the configured FunASR model (default: SenseVoiceSmall).",
   transcribe_how_2: "It runs locally on CPU and does not send your data to external APIs.",
-  transcribe_how_3: "Once started, a background job will be created that you can track in the Downloads/Jobs view.",
-  transcribe_how_4: "The output transcript will be saved as an `.srt` payload next to the original file.",
+  transcribe_how_3: "Track stages and elapsed time below; tasks also appear in Downloads.",
+  transcribe_how_4: "The transcript is saved next to the original file in your configured TXT, SRT or VTT format.",
   transcribe_how_5: "Expect longer processing times for large files or when running on lower-end hardware.",
   transcribe_task_started: "Transcription task started processing.",
   transcribe_task_failed: "Failed to start transcription.",

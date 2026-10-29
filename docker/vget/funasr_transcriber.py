@@ -1,4 +1,5 @@
 import os
+import json
 import sys
 import argparse
 import time
@@ -355,6 +356,10 @@ def generate_transcription(model, audio_file: str, want_sentence_timestamps: boo
             return model.generate(**kwargs)
         raise
 
+def report_progress(stage):
+    print("VGET_PROGRESS " + json.dumps({"stage": stage}), flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="FunASR offline transcriber")
     parser.add_argument("audio", help="Path to input audio/video file")
@@ -377,6 +382,7 @@ def main():
     base_name = os.path.splitext(os.path.basename(audio_file))[0]
     out_path = os.path.join(output_dir, f"{base_name}.{output_format}")
 
+    report_progress("loading_model")
     print(f"Loading SenseVoiceSmall model on {args.device}...")
     
     # Load SenseVoiceSmall, standard parameters for local inference
@@ -390,6 +396,7 @@ def main():
         disable_update=True
     )
 
+    report_progress("transcribing")
     print(f"Transcribing {audio_file}...")
     start_time = time.time()
     
@@ -399,6 +406,8 @@ def main():
     if not res or not len(res):
         print("Error: Empty response from model.", file=sys.stderr)
         sys.exit(1)
+
+    report_progress("writing")
 
     # Note: SenseVoice returns text with emotions and lang tags. We use postprocess to clean it up.
     # format is typically: [{'key': 'filename', 'text': '<|zh|><|NEUTRAL|><|Speech|><|wo|>xxx', 'timestamp': [[start, end], [start, end]]}]

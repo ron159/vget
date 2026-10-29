@@ -62,6 +62,19 @@ export function DownloadJobCard({
     }
   }, [job.downloaded, job.status]);
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!job.transcription_started_at || job.status !== "transcribing") return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [job.transcription_started_at, job.status]);
+  const startedAt = Date.parse(job.transcription_started_at || "");
+  const endedAt = job.status === "transcribing" ? now : Date.parse(job.updated_at || "");
+  const elapsed = Number.isFinite(startedAt) && Number.isFinite(endedAt)
+    ? Math.max(0, Math.floor((endedAt - startedAt) / 1000)) : null;
+  const stages = [t.transcribe_loading_model, t.transcribe_recognizing, t.transcribe_writing];
+  const stageIndex = Math.max(0, ["loading_model", "transcribing", "writing"].indexOf(job.transcription_stage || ""));
+
   const statusText: Record<JobStatus, string> = {
     queued: t.queued,
     downloading: t.downloading,
@@ -148,12 +161,28 @@ export function DownloadJobCard({
         </div>
       )}
       {job.status === "transcribing" && (
-        <div className="flex flex-col gap-2 mt-3">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-            {t.transcribing || "transcribing audio (this may take a while)..."}
-          </span>
+        <div className="flex flex-col gap-3 mt-3" role="status" aria-live="polite">
+          <ol className="grid grid-cols-3 gap-2 text-xs">
+            {stages.map((stage, index) => (
+              <li key={stage} aria-current={index === stageIndex ? "step" : undefined}
+                className={clsx("border-t-2 pt-2", index <= stageIndex
+                  ? "border-purple-500 text-purple-700 dark:text-purple-300"
+                  : "border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400")}>
+                {index + 1}. {stage}
+              </li>
+            ))}
+          </ol>
+          <div role="progressbar" aria-label={stages[stageIndex]} aria-valuetext={stages[stageIndex]}
+            className="h-1.5 overflow-hidden rounded bg-purple-100 dark:bg-purple-950">
+            <div className="h-full w-full animate-indeterminate bg-purple-500" />
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.transcribe_time_unknown}</p>
         </div>
+      )}
+      {elapsed !== null && (
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400" aria-live="off">
+          {t.transcribe_elapsed}: {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
+        </p>
       )}
       {job.status === "failed" && job.error && (
         <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs text-red-700 dark:text-red-300">

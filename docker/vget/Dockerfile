@@ -85,3 +85,5 @@ CMD []
 FROM ${BASE_IMAGE}
 
 COPY --from=go-builder /vget-server /usr/local/bin/vget-server
+# Keep the wrapper current even when reusing a cached model base image.
+COPY docker/vget/funasr_transcriber.py /usr/local/bin/funasr_transcriber.py

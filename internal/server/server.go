@@ -433,12 +433,16 @@ func (s *Server) handleStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, Response{
 		Code: 200,
 		Data: gin.H{
-			"id":         job.ID,
-			"status":     job.Status,
-			"progress":   job.Progress,
-			"filename":   job.Filename,
-			"error":      job.Error,
-			"transcribe": job.Transcribe,
+			"id":                       job.ID,
+			"status":                   job.Status,
+			"progress":                 job.Progress,
+			"filename":                 job.Filename,
+			"error":                    job.Error,
+			"transcribe":               job.Transcribe,
+			"transcription_stage":      job.TranscriptionStage,
+			"transcription_started_at": job.TranscriptionStartedAt,
+			"created_at":               job.CreatedAt,
+			"updated_at":               job.UpdatedAt,
 		},
 		Message: string(job.Status),
 	})
@@ -624,25 +628,27 @@ func (s *Server) startTranscribeJob(absPath string) (*Job, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	job := &Job{
-		ID:         jobId,
-		URL:        "local://" + filepath.Base(absPath),
-		Filename:   absPath,
-		Status:     JobStatusTranscribing,
-		Progress:   0,
-		Transcribe: true,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		ctx:        ctx,
-		cancel:     cancel,
+		ID:                 jobId,
+		URL:                "local://" + filepath.Base(absPath),
+		Filename:           absPath,
+		Status:             JobStatusTranscribing,
+		TranscriptionStage: "loading_model",
+		Progress:           0,
+		Transcribe:         true,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+		ctx:                ctx,
+		cancel:             cancel,
 	}
 
 	s.jobQueue.mu.Lock()
+	job.TranscriptionStartedAt = &job.CreatedAt
 	s.jobQueue.jobs[jobId] = job
 	s.jobQueue.mu.Unlock()
 
 	go func(j *Job, p string) {
 		cfg := config.LoadOrDefault()
-		err := transcriber.TranscribeAudio(j.ctx, p, cfg.TranscribeFormat)
+		err := transcriber.TranscribeAudio(j.ctx, p, cfg.TranscribeFormat, func(stage string) { s.jobQueue.updateTranscriptionStage(j.ID, stage) })
 		if err != nil {
 			s.jobQueue.updateJobStatus(j.ID, JobStatusFailed, 0, err.Error())
 		} else {
@@ -651,7 +657,7 @@ func (s *Server) startTranscribeJob(absPath string) (*Job, error) {
 		s.jobQueue.recordJobToHistory(j.ID)
 	}(job, absPath)
 
-	return job, nil
+	return s.jobQueue.GetJob(jobId), nil
 }
 
 func (s *Server) handleGetJobs(c *gin.Context) {
@@ -660,14 +666,19 @@ func (s *Server) handleGetJobs(c *gin.Context) {
 	jobList := make([]gin.H, len(jobs))
 	for i, job := range jobs {
 		jobList[i] = gin.H{
-			"id":         job.ID,
-			"url":        job.URL,
-			"status":     job.Status,
-			"progress":   job.Progress,
-			"downloaded": job.Downloaded,
-			"total":      job.Total,
-			"filename":   job.Filename,
-			"error":      job.Error,
+			"id":                       job.ID,
+			"url":                      job.URL,
+			"status":                   job.Status,
+			"progress":                 job.Progress,
+			"downloaded":               job.Downloaded,
+			"total":                    job.Total,
+			"filename":                 job.Filename,
+			"error":                    job.Error,
+			"transcribe":               job.Transcribe,
+			"transcription_stage":      job.TranscriptionStage,
+			"transcription_started_at": job.TranscriptionStartedAt,
+			"created_at":               job.CreatedAt,
+			"updated_at":               job.UpdatedAt,
 		}
 	}
 

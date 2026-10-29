@@ -2,16 +2,20 @@ import { useRef, useState } from "react";
 import clsx from "clsx";
 import { useApp } from "../context/AppContext";
 import { FaMicrophone, FaFileAudio, FaFolderOpen } from "react-icons/fa6";
+import { DownloadJobCard } from "../components/DownloadJobCard";
 import { postTranscribe, postTranscribeUpload } from "../utils/apis";
 
 const acceptedAudioFormats = ".mp3,.m4a,.wav,.mp4,.mkv,.webm,.ts";
 
 export function TranscribePage() {
-  const { isConnected, showToast, t } = useApp();
+  const { isConnected, showToast, t, jobs, refresh, cancelDownload, removeJob } = useApp();
+  const transcriptionJobs = jobs.filter((job) => job.transcribe || job.url.startsWith("local://"))
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
   const [filePath, setFilePath] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tasksRef = useRef<HTMLElement>(null);
 
   const resetFileSelection = () => {
     setSelectedFile(null);
@@ -45,6 +49,8 @@ export function TranscribePage() {
         );
         setFilePath("");
         resetFileSelection();
+        await refresh();
+        requestAnimationFrame(() => tasksRef.current?.scrollIntoView({ block: "start" }));
       } else {
         showToast(
           "error",
@@ -169,11 +175,24 @@ export function TranscribePage() {
             disabled={!isConnected || (!filePath.trim() && !selectedFile) || submitting}
           >
             {submitting
-              ? t.transcribe_starting || "Starting Task..."
+              ? selectedFile ? t.transcribe_uploading : t.transcribe_starting || "Starting Task..."
               : t.transcribe_start || "Start Transcription"}
           </button>
         </form>
       </div>
+
+      <section ref={tasksRef} aria-label={t.transcribe_jobs} className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{t.transcribe_jobs}</h2>
+        {!isConnected && transcriptionJobs.length > 0 && (
+          <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{t.transcribe_network_err}</p>
+        )}
+        {transcriptionJobs.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.transcribe_no_jobs}</p>
+        ) : transcriptionJobs.map((job) => (
+          <DownloadJobCard key={job.id} job={job} t={t}
+            onCancel={() => cancelDownload(job.id)} onClear={() => removeJob(job.id)} />
+        ))}
+      </section>
 
       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700/50">
         <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">

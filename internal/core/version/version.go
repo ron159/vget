@@ -1,7 +1,7 @@
 package version
 
 var (
-	Version = "1.2.20"
+	Version = "1.2.26"
 	Commit  = "unknown"
-	Date    = "2026-03-17"
+	Date    = "2026-10-29"
 )
