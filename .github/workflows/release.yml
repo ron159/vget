@@ -13,7 +13,13 @@ env:
   MODEL_BASE_TAG: sensevoicesmall-ctpunc-v1
 
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   release:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,7 +57,7 @@ jobs:
 
       - name: Extract version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare latest zips
         run: |
@@ -75,6 +81,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker-amd64:
+    needs: validate
     if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     outputs:
@@ -112,6 +119,7 @@ jobs:
           outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
   docker-arm64:
+    needs: validate
     if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-24.04-arm
     outputs:
